@@ -180,6 +180,12 @@ h1.title{font-size:18px;font-weight:800;}
 .goal-card{margin-top:14px;}
 .goal-progress{margin-top:14px;}
 .goal-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-weight:600;margin-top:6px;}
+.ring-note{text-align:center;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;}
+.ball-box{position:relative;width:180px;height:180px;margin:14px auto 8px;}
+.ball-box canvas{width:180px;height:180px;display:block;}
+.ball-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.ball-pct{font-size:42px;font-weight:800;color:#fff;letter-spacing:-.5px;text-shadow:0 1px 5px rgba(0,0,0,.4),0 0 8px rgba(0,0,0,.28);}
+.ball-sub{text-align:center;font-size:13px;color:var(--muted);font-weight:600;margin-top:2px;}
 
 /* settings */
 .set-item{display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface);border-radius:var(--radius-sm);box-shadow:var(--shadow-soft);margin-bottom:10px;}
@@ -299,6 +305,11 @@ h1.title{font-size:18px;font-weight:800;}
         <input class="inp" id="noteInput" placeholder="写点什么呢…">
       </div>
 
+      <div class="field" id="lenderField" style="display:none;">
+        <label>欠款人</label>
+        <input class="inp" id="lenderInput" placeholder="比如 张三">
+      </div>
+
       <div class="field">
         <label>日期</label>
         <input class="inp" id="dateInput" type="date">
@@ -314,27 +325,41 @@ h1.title{font-size:18px;font-weight:800;}
       <h1 class="title">目标</h1>
 
       <div class="card" style="margin-top:14px;">
-        <div class="h-row"><span class="muted" style="font-weight:700;">💰 当前总存款</span><span class="pill" style="background:var(--mint-soft);color:#4EAF83;">实时自动计算</span></div>
+        <div class="h-row"><span class="muted" style="font-weight:700;">💰 当前总存款</span><button class="act" onclick="openDeposit()">编辑</button></div>
         <div class="stat-big" id="totalDeposit">¥0</div>
-        <div class="muted" style="margin-top:4px;">所有收入 − 所有支出</div>
+        <div class="muted" style="margin-top:4px;" id="depositDetail">现金 ¥0 · 别人欠我 ¥0</div>
+      </div>
+
+      <div class="card goal-card">
+        <div class="h-row"><span style="font-weight:800;">🤝 别人欠我</span><button class="act" onclick="openAddDebt()">＋ 添加</button></div>
+        <div class="muted" style="margin-top:6px;" id="debtTotal">未还 ¥0</div>
+        <div id="debtList" style="margin-top:10px;"></div>
+        <div class="empty" id="debtEmpty" style="display:none;"><span class="e">🤝</span>现在没人欠你钱</div>
       </div>
 
       <div class="card goal-card">
         <div class="h-row"><span style="font-weight:800;">🍬 月度消费阈值</span><button class="act" onclick="openThreshold()">设置</button></div>
         <div class="muted" style="margin-top:6px;" id="thresholdDesc">还没设置，点「设置」定一个本月最多花多少</div>
-        <div class="goal-progress" id="thresholdProgress" style="display:none;">
-          <div class="bar" style="height:12px;"><i id="thresholdFill" style="width:0%;background:linear-gradient(90deg,#FFD166,#FF8FA3);"></i></div>
-          <div class="goal-meta"><span id="thresholdUsed">已花 ¥0</span><span id="thresholdLeft">剩 ¥0</span></div>
+        <div id="thresholdProgress" style="display:none;">
+          <div class="ball-box">
+            <canvas id="thresholdBall" width="360" height="360"></canvas>
+            <div class="ball-center"><div class="ball-pct" id="thresholdPct">0%</div></div>
+          </div>
+          <div class="ball-sub" id="thresholdSub">已花 ¥0 / 预算 ¥0</div>
+          <div class="ring-note" id="thresholdNote"></div>
         </div>
       </div>
 
       <div class="card goal-card">
         <div class="h-row"><span style="font-weight:800;">🎯 年度存款目标</span><button class="act" onclick="openGoal()">设置</button></div>
         <div class="muted" style="margin-top:6px;" id="goalDesc">还没设置，定一个想存下的目标吧</div>
-        <div class="goal-progress" id="goalProgress" style="display:none;">
-          <div class="bar" style="height:12px;"><i id="goalFill" style="width:0%;background:linear-gradient(90deg,#7BD3A5,#6FC9A0);"></i></div>
-          <div class="goal-meta"><span id="goalSaved">区间内已存 ¥0</span><span id="goalPct">0%</span></div>
-          <div class="muted" id="goalHint" style="margin-top:8px;font-size:12px;"></div>
+        <div id="goalProgress" style="display:none;">
+          <div class="ball-box">
+            <canvas id="goalBall" width="360" height="360"></canvas>
+            <div class="ball-center"><div class="ball-pct" id="goalPct">0%</div></div>
+          </div>
+          <div class="ball-sub" id="goalSub">总存款 ¥0 / 目标 ¥0</div>
+          <div class="ring-note" id="goalHint"></div>
         </div>
       </div>
     </section>
@@ -375,7 +400,7 @@ h1.title{font-size:18px;font-weight:800;}
 
 <script>
 /* ================= 数据层 ================= */
-const K = {tx:'hj_tx', acc:'hj_accounts', cat:'hj_categories', set:'hj_settings'};
+const K = {tx:'hj_tx', acc:'hj_accounts', cat:'hj_categories', set:'hj_settings', debt:'hj_debts'};
 
 const DEFAULT_CATS = {
   expense:[
@@ -388,6 +413,7 @@ const DEFAULT_CATS = {
     {id:'fun', em:'🎮', n:'娱乐'},
     {id:'pet', em:'🐱', n:'宠物'},
     {id:'daily', em:'🧾', n:'日用'},
+    {id:'lend', em:'🤝', n:'借出'},
     {id:'other_e', em:'❤️', n:'其他'}
   ],
   income:[
@@ -395,6 +421,7 @@ const DEFAULT_CATS = {
     {id:'redpacket', em:'🧧', n:'红包'},
     {id:'invest', em:'🏦', n:'理财'},
     {id:'parttime', em:'💼', n:'兼职'},
+    {id:'repay', em:'💵', n:'还款'},
     {id:'other_i', em:'❤️', n:'其他'}
   ]
 };
@@ -405,12 +432,18 @@ function save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 let tx = load(K.tx, []);
 let accounts = load(K.acc, [{id:'alipay', name:'支付宝', type:'alipay'}, {id:'wechat', name:'微信', type:'wechat'}]);
 let categories = load(K.cat, JSON.parse(JSON.stringify(DEFAULT_CATS)));
-let settings = Object.assign({threshold:null, goal:null, nickname:''}, load(K.set, {}));
+if(!categories.expense.find(c=>c.id==='lend')) categories.expense.push({id:'lend', em:'🤝', n:'借出'});
+if(!categories.income.find(c=>c.id==='repay')) categories.income.push({id:'repay', em:'💵', n:'还款'});
+save(K.cat, categories);
+let settings = Object.assign({threshold:null, goal:null, nickname:'', depositBase:null, depositBaseAt:null}, load(K.set, {}));
+if(settings.depositBase==null && settings.initialDeposit!=null){ settings.depositBase = settings.initialDeposit; settings.depositBaseAt = 0; }
+let debts = load(K.debt, []);
 
 function persistTx(){ save(K.tx, tx); }
 function persistAcc(){ save(K.acc, accounts); }
 function persistCat(){ save(K.cat, categories); }
 function persistSet(){ save(K.set, settings); }
+function persistDebt(){ save(K.debt, debts); }
 
 /* ================= 工具 ================= */
 function localISO(d){ const off = d.getTimezoneOffset(); return new Date(d.getTime()-off*60000).toISOString().slice(0,10); }
@@ -419,9 +452,20 @@ function money(n){
   n = Math.round((Number(n)||0)*100)/100;
   const sign = n<0?'-':'';
   const abs = Math.abs(n);
-  const parts = abs.toFixed(2).split('.');
+  const s = abs % 1 === 0 ? String(abs) : abs.toFixed(2);
+  const parts = s.split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return sign + '¥' + parts.join('.');
+}
+function calcDeposit(){
+  const base = settings.depositBase || 0;
+  const baseAt = settings.depositBaseAt || 0;
+  const inc = tx.filter(t=>t.type==='income' && t.createdAt>baseAt).reduce((s,t)=>s+t.amount,0);
+  const exp = tx.filter(t=>t.type==='expense' && t.createdAt>baseAt).reduce((s,t)=>s+t.amount,0);
+  return base + inc - exp;
+}
+function calcDebts(){
+  return debts.filter(d=>d.status==='unpaid').reduce((s,d)=>s+d.amount,0);
 }
 function catById(id){
   const all = categories.expense.concat(categories.income);
@@ -546,6 +590,7 @@ function resetRecord(){
   document.querySelectorAll('#typeToggle button').forEach(b=>b.classList.toggle('on', b.dataset.type==='expense'));
   document.getElementById('noteInput').value='';
   document.getElementById('dateInput').value=recDate;
+  document.getElementById('lenderInput').value='';
 }
 function renderRecord(){
   renderAmount();
@@ -562,6 +607,8 @@ function renderCatGrid(){
     el.onclick=()=>{ recCat=c.id; renderCatGrid(); };
     g.appendChild(el);
   });
+  const lf=document.getElementById('lenderField');
+  if(lf) lf.style.display = (recType==='expense' && recCat==='lend') ? 'block' : 'none';
 }
 function renderAccountChips(){
   const c=document.getElementById('accountChips'); c.innerHTML='';
@@ -577,6 +624,11 @@ function saveTx(){
   if(!amount || amount<=0){ toast('先输入金额呀'); return; }
   if(!recCat){ toast('选一个分类哦'); return; }
   if(!recAccount){ toast('选一个账户哦'); return; }
+  let lender='';
+  if(recType==='expense' && recCat==='lend'){
+    lender=document.getElementById('lenderInput').value.trim();
+    if(!lender){ toast('填一下欠款人哦'); return; }
+  }
   const d=document.getElementById('dateInput').value || todayStr();
   const acc = accounts.find(a=>a.id===recAccount);
   tx.push({
@@ -586,8 +638,12 @@ function saveTx(){
     note: document.getElementById('noteInput').value.trim(),
     date: d, createdAt: Date.now()
   });
+  if(recType==='expense' && recCat==='lend'){
+    debts.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), name:lender, amount, date:d, status:'unpaid', createdAt:Date.now()});
+    persistDebt();
+  }
   persistTx();
-  toast(recType==='expense'?'支出记好啦 🍃':'收入记好啦 🎉');
+  toast(recType==='expense' ? (recCat==='lend'?'借出记好啦 🤝':'支出记好啦 🍃') : '收入记好啦 🎉');
   switchView('homeView');
 }
 
@@ -651,10 +707,61 @@ function drawDonut(arr){
 }
 
 /* ================= 目标 ================= */
+function lightenColor(hex, amt){
+  amt = amt==null ? 0.85 : amt;
+  const c=hex.replace('#','');
+  const r=parseInt(c.slice(0,2),16), g=parseInt(c.slice(2,4),16), b=parseInt(c.slice(4,6),16);
+  return 'rgb('+Math.round(r+(255-r)*amt)+','+Math.round(g+(255-g)*amt)+','+Math.round(b+(255-b)*amt)+')';
+}
+function drawBall(ctx, s, level, color, t){
+  const cx=s/2, cy=s/2, r=s*0.44;
+  ctx.clearRect(0,0,s,s);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle = lightenColor(color); ctx.fillRect(0,0,s,s);
+  const waterY = cy + r - level*2*r;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx-r, cy+r);
+  const amp = s*0.016;
+  for(let x=cx-r; x<=cx+r; x+=2){
+    const y = waterY + Math.sin((x-cx)*0.03+t)*amp + Math.sin((x-cx)*0.017+t*1.35)*amp*0.7;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(cx+r, cy+r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle=color; ctx.lineWidth=s*0.02; ctx.stroke();
+}
+const _ballState = {
+  threshold:{pct:0, color:'#FF7E97'},
+  goal:{pct:0, color:'#6FC9A0'}
+};
+const _ballLoops = {};
+function animateBall(key, cv, getState){
+  if(_ballLoops[key]) return;
+  _ballLoops[key]=true;
+  const ctx=cv.getContext('2d');
+  const s=cv.width;
+  let t=0, level=0;
+  (function frame(){
+    t+=0.05;
+    const st=getState();
+    const target=Math.max(0,Math.min(1,st.pct/100));
+    level += (target-level)*0.08;
+    drawBall(ctx, s, level, st.color, t);
+    requestAnimationFrame(frame);
+  })();
+}
 function renderGoals(){
-  const totalInc = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const totalExp = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('totalDeposit').textContent = money(totalInc-totalExp);
+  const cash = calcDeposit();
+  const owed = calcDebts();
+  const total = cash + owed;
+  document.getElementById('totalDeposit').textContent = money(total);
+  document.getElementById('depositDetail').textContent = '现金 '+money(cash)+' · 别人欠我 '+money(owed);
+  renderDebts();
 
   // 月度阈值
   const th=settings.threshold;
@@ -665,9 +772,16 @@ function renderGoals(){
     const m=monthOf(todayStr());
     const exp=tx.filter(t=>t.type==='expense'&&monthOf(t.date)===m).reduce((s,t)=>s+t.amount,0);
     const pct=Math.min(100,Math.round(exp/th*100));
-    document.getElementById('thresholdFill').style.width=pct+'%';
-    document.getElementById('thresholdUsed').textContent='已花 '+money(exp);
-    document.getElementById('thresholdLeft').textContent = exp<=th ? '剩 '+money(th-exp) : '超支 '+money(exp-th);
+    let color='#FF7E97';
+    if(pct>=100) color='#FF6B6B'; else if(pct>=80) color='#FF9F43';
+    _ballState.threshold.pct=pct;
+    _ballState.threshold.color=color;
+    document.getElementById('thresholdPct').textContent=pct+'%';
+    document.getElementById('thresholdSub').textContent='已花 '+money(exp)+' / 预算 '+money(th);
+    animateBall('threshold', document.getElementById('thresholdBall'), ()=>_ballState.threshold);
+    const note=document.getElementById('thresholdNote');
+    if(exp<=th){ note.textContent='还剩 '+money(th-exp)+'，继续保持～'; note.style.color='var(--muted)'; }
+    else { note.textContent='已超支 '+money(exp-th)+'，这个月注意节制哦'; note.style.color=color; }
   } else { desc.style.display='block'; prog.style.display='none'; }
 
   // 年度目标
@@ -676,28 +790,112 @@ function renderGoals(){
   const gprog=document.getElementById('goalProgress');
   if(g && g.amount>0){
     gdesc.style.display='none'; gprog.style.display='block';
-    const inRange = tx.filter(t=>t.type==='income' && t.date>=g.start && t.date<=g.end).reduce((s,t)=>s+t.amount,0);
-    const exRange = tx.filter(t=>t.type==='expense' && t.date>=g.start && t.date<=g.end).reduce((s,t)=>s+t.amount,0);
-    const saved=inRange-exRange;
-    const pct=Math.max(0,Math.min(100,Math.round(saved/g.amount*100)));
-    document.getElementById('goalFill').style.width=pct+'%';
-    document.getElementById('goalSaved').textContent='区间内已存 '+money(saved);
+    const totalDeposit = total;
+    const pct=Math.max(0,Math.min(100,Math.round(totalDeposit/g.amount*100)));
+    _ballState.goal.pct=pct;
     document.getElementById('goalPct').textContent=pct+'%';
+    document.getElementById('goalSub').textContent='总存款 '+money(totalDeposit)+' / 目标 '+money(g.amount);
+    animateBall('goal', document.getElementById('goalBall'), ()=>_ballState.goal);
     const today=todayStr();
-    const remain = saved<g.amount ? g.amount-saved : 0;
-    if(today<g.start){
-      document.getElementById('goalHint').textContent='目标从 '+g.start+' 开始，先存着钱等它启动吧';
-    } else if(today>g.end){
-      document.getElementById('goalHint').textContent= saved>=g.amount ? '🎉 目标达成，太棒啦！' : '目标已结束，还差 '+money(remain);
+    const remain = totalDeposit<g.amount ? g.amount-totalDeposit : 0;
+    const hint=document.getElementById('goalHint');
+    if(today>g.end){
+      hint.textContent = totalDeposit>=g.amount ? '🎉 目标达成，太棒啦！' : '目标已结束，还差 '+money(remain);
     } else {
-      const totalDays=(new Date(g.end)-new Date(g.start))/86400000+1;
       const leftDays=(new Date(g.end)-new Date(today))/86400000;
       const perDay = remain/Math.max(1,leftDays);
-      document.getElementById('goalHint').textContent='还剩 '+Math.ceil(leftDays)+' 天，平均每天存 '+money(perDay)+' 就能达标';
+      hint.textContent='还剩 '+Math.ceil(leftDays)+' 天，平均每天存 '+money(perDay)+' 就能达标';
     }
   } else { gdesc.style.display='block'; gprog.style.display='none'; }
 }
 
+function renderDebts(){
+  const list=document.getElementById('debtList');
+  const empty=document.getElementById('debtEmpty');
+  const total=document.getElementById('debtTotal');
+  const unpaid=debts.filter(d=>d.status==='unpaid').sort((a,b)=>b.createdAt-a.createdAt);
+  total.textContent='未还 '+money(calcDebts())+(unpaid.length?' · '+unpaid.length+' 笔':'');
+  list.innerHTML='';
+  if(unpaid.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  unpaid.forEach(d=>{
+    const el=document.createElement('div');
+    el.className='set-item';
+    el.style.marginBottom='8px';
+    el.innerHTML='<div class="em">🤝</div>'+
+      '<div class="t">'+d.name+'<div class="s">'+money(d.amount)+' · '+d.date+'</div></div>'+
+      '<button class="act" onclick="repayDebt(\''+d.id+'\')">已还</button>'+
+      '<button class="act" style="color:var(--danger);margin-left:12px;" onclick="delDebt(\''+d.id+'\')">删</button>';
+    list.appendChild(el);
+  });
+}
+function accountEmoji(a){
+  if(a.type==='alipay') return '🅰️';
+  if(a.type==='wechat') return '💬';
+  return '💳';
+}
+function repayDebt(id){
+  const d=debts.find(x=>x.id===id);
+  if(!d || d.status!=='unpaid') return;
+  let rows='';
+  accounts.forEach(a=>{
+    rows+='<div class="set-item" onclick="confirmRepay(\''+id+'\',\''+a.id+'\')">'+
+      '<div class="em">'+accountEmoji(a)+'</div>'+
+      '<div class="t">'+a.name+'</div>'+
+      '<div class="arrow">›</div></div>';
+  });
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:6px;">💵 还款到账</h3>'+
+    '<div class="muted" style="margin-bottom:12px;">'+d.name+' 还你 '+money(d.amount)+'，记到哪个账户？</div>'+
+    rows+
+    '<div style="margin-top:12px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button></div>');
+}
+function confirmRepay(id, accId){
+  const d=debts.find(x=>x.id===id);
+  if(!d || d.status!=='unpaid') return;
+  const acc=accounts.find(a=>a.id===accId)||accounts[0]||{id:'',name:''};
+  d.status='paid'; d.paidAt=Date.now(); persistDebt();
+  tx.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    type:'income', amount:d.amount, cat:'repay',
+    account: acc.id, accountName: acc.name,
+    note: d.name+' 还款', date: todayStr(), createdAt: Date.now()
+  });
+  persistTx(); closeSheet();
+  toast(d.name+' 的还款已记到 '+acc.name+' 🎉');
+  renderGoals();
+}
+function delDebt(id){
+  debts=debts.filter(x=>x.id!==id); persistDebt(); toast('已删除'); renderGoals();
+}
+function openAddDebt(){
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">🤝 添加欠款</h3>'+
+    '<div class="muted" style="margin-bottom:10px;">记录别人欠你的钱（比如之前借出没记账的）。</div>'+
+    '<div class="field"><label>欠款人</label><input class="inp" id="debtName" placeholder="比如 张三"></div>'+
+    '<div class="field"><label>金额</label><input class="inp" id="debtAmt" type="number" inputmode="decimal" placeholder="例如 500"></div>'+
+    '<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" onclick="saveDebt()">保存</button></div>');
+}
+function saveDebt(){
+  const name=document.getElementById('debtName').value.trim();
+  const amt=parseFloat(document.getElementById('debtAmt').value);
+  if(!name){ toast('填一下欠款人'); return; }
+  if(!amt || amt<=0){ toast('请输入有效金额'); return; }
+  debts.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), name, amount:amt, date:todayStr(), status:'unpaid', createdAt:Date.now()});
+  persistDebt(); closeSheet(); toast('欠款记录好啦'); renderGoals();
+}
+function openDeposit(){
+  const cur = calcDeposit();
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">💰 校准现金余额</h3>'+
+    '<div class="muted" style="margin-bottom:10px;">填入你账户里现在真实的现金余额（不含别人欠你的钱）。保存后，之后记的收支会在这个基础上自动加减。</div>'+
+    '<input class="inp" id="depInput" type="number" inputmode="decimal" placeholder="例如 20000" value="'+cur+'">'+
+    '<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" onclick="saveDeposit()">保存</button></div>');
+  setTimeout(()=>document.getElementById('depInput').focus(),200);
+}
+function saveDeposit(){
+  const v=parseFloat(document.getElementById('depInput').value);
+  if(isNaN(v)){ toast('请输入有效金额'); return; }
+  settings.depositBase=v; settings.depositBaseAt=Date.now(); persistSet();
+  closeSheet(); toast('总存款已更新 ✨'); renderGoals();
+}
 function openThreshold(){
   const cur = settings.threshold||'';
   openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">🍬 每月最多花多少</h3>'+
