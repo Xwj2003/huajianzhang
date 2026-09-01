@@ -204,6 +204,11 @@ h1.title{font-size:18px;font-weight:800;}
 .btn-row{display:flex;gap:10px;margin-top:10px;}
 .btn-row .btn{flex:1;}
 
+/* segmented control */
+.seg{display:flex;background:var(--primary-soft);border-radius:12px;padding:4px;margin-bottom:14px;gap:4px;}
+.seg-btn{flex:1;padding:9px 0;border-radius:9px;font-size:14px;font-weight:700;color:var(--muted);background:transparent;border:none;}
+.seg-btn.active{background:#fff;color:var(--primary-deep);box-shadow:0 1px 4px rgba(0,0,0,.06);}
+
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(74,59,59,.4);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);}
 #modal.show{display:flex;}
@@ -831,9 +836,16 @@ function renderDebts(){
   });
 }
 function accountEmoji(a){
-  if(a.type==='alipay') return '🅰️';
+  if(a.type==='alipay') return '📱';
   if(a.type==='wechat') return '💬';
+  if(a.type==='fund') return '📈';
   return '💳';
+}
+function accountLabel(a){
+  if(a.type==='alipay') return '支付宝';
+  if(a.type==='wechat') return '微信';
+  if(a.type==='fund') return '基金';
+  return '银行卡';
 }
 function repayDebt(id){
   const d=debts.find(x=>x.id===id);
@@ -885,15 +897,68 @@ function saveDebt(){
 }
 function openDeposit(){
   const cur = calcDeposit();
-  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">💰 校准现金余额</h3>'+
-    '<div class="muted" style="margin-bottom:10px;">填入你账户里现在真实的现金余额（不含别人欠你的钱）。保存后，之后记的收支会在这个基础上自动加减。</div>'+
-    '<input class="inp" id="depInput" type="number" inputmode="decimal" placeholder="例如 20000" value="'+cur+'">'+
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">💰 校准余额</h3>'+
+    '<div class="seg" id="depMode">'+
+      '<button class="seg-btn active" data-mode="total" onclick="setDepMode(\'total\')">直接填总额</button>'+
+      '<button class="seg-btn" data-mode="byacc" onclick="setDepMode(\'byacc\')">按账户填</button>'+
+    '</div>'+
+    '<div id="depTotalPane">'+
+      '<div class="muted" style="margin-bottom:10px;">填入账户里现在真实的现金余额（不含别人欠你的钱）。</div>'+
+      '<input class="inp" id="depInput" type="number" inputmode="decimal" placeholder="例如 20000" value="'+cur+'">'+
+    '</div>'+
+    '<div id="depAccPane" style="display:none;">'+
+      '<div class="muted" style="margin-bottom:10px;">分别填每个账户现在的余额，保存时会自动加总。</div>'+
+      '<div id="depAccList"></div>'+
+    '</div>'+
     '<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" onclick="saveDeposit()">保存</button></div>');
+  renderDepAccList();
   setTimeout(()=>document.getElementById('depInput').focus(),200);
 }
+function setDepMode(m){
+  document.querySelectorAll('#depMode .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  document.getElementById('depTotalPane').style.display = (m==='total'?'block':'none');
+  document.getElementById('depAccPane').style.display = (m==='byacc'?'block':'none');
+}
+function renderDepAccList(){
+  const el=document.getElementById('depAccList');
+  if(!el) return;
+  let html='';
+  accounts.forEach(a=>{
+    html+='<div class="field"><label>'+accountEmoji(a)+' '+a.name+'</label>'+
+      '<input class="inp dep-acc-input" data-id="'+a.id+'" type="number" inputmode="decimal" placeholder="余额" value="'+(a.balance!=null?a.balance:'')+'" oninput="updateDepAccTotal()"></div>';
+  });
+  html+='<div class="h-row" style="margin-top:12px;padding:12px 14px;background:var(--primary-soft);border-radius:12px;">'+
+    '<span class="muted" style="font-weight:700;">合计</span><span style="font-weight:800;color:var(--primary-deep);" id="depAccTotal">¥0</span></div>';
+  el.innerHTML=html;
+  updateDepAccTotal();
+}
+function updateDepAccTotal(){
+  let sum=0;
+  document.querySelectorAll('.dep-acc-input').forEach(inp=>{
+    const n=parseFloat(inp.value);
+    if(!isNaN(n) && n>=0) sum+=n;
+  });
+  const t=document.getElementById('depAccTotal');
+  if(t) t.textContent=money(sum);
+}
 function saveDeposit(){
-  const v=parseFloat(document.getElementById('depInput').value);
-  if(isNaN(v)){ toast('请输入有效金额'); return; }
+  let v;
+  if(document.getElementById('depAccPane').style.display==='block'){
+    let sum=0, filled=false;
+    document.querySelectorAll('.dep-acc-input').forEach(inp=>{
+      const n=parseFloat(inp.value);
+      const acc=accounts.find(a=>a.id===inp.dataset.id);
+      if(acc){
+        if(!isNaN(n) && n>=0){ acc.balance=n; sum+=n; filled=true; }
+        else acc.balance=null;
+      }
+    });
+    if(!filled){ toast('至少填一个账户的余额哦'); return; }
+    v=sum; persistAcc();
+  } else {
+    v=parseFloat(document.getElementById('depInput').value);
+    if(isNaN(v)){ toast('请输入有效金额'); return; }
+  }
   settings.depositBase=v; settings.depositBaseAt=Date.now(); persistSet();
   closeSheet(); toast('总存款已更新 ✨'); renderGoals();
 }
@@ -948,18 +1013,18 @@ function saveNickname(){
 function openAccounts(){
   let html='<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">💳 账户管理</h3>';
   accounts.forEach(a=>{
-    const label = a.type==='alipay'?'支付宝':(a.type==='wechat'?'微信':'银行卡');
-    html+='<div class="set-item"><div class="em">'+(a.type==='alipay'?'📱':(a.type==='wechat'?'💬':'💳'))+'</div>'+
-      '<div class="t">'+a.name+'<div class="s">'+label+'</div></div>'+
+    html+='<div class="set-item"><div class="em">'+accountEmoji(a)+'</div>'+
+      '<div class="t">'+a.name+'<div class="s">'+accountLabel(a)+'</div></div>'+
       '<button class="act" onclick="delAccount(\''+a.id+'\')">删除</button></div>';
   });
   html+='<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="addBank()">＋ 添加银行卡</button></div>';
-  html+='<div class="muted" style="text-align:center;margin-top:12px;">支付宝和微信是固定账户，银行卡可以加多张</div>';
+  html+='<div style="margin-top:8px;" class="btn-row"><button class="btn ghost" onclick="addFund()">＋ 添加基金</button></div>';
+  html+='<div class="muted" style="text-align:center;margin-top:12px;">支付宝和微信是固定账户，银行卡和基金可以加多个</div>';
   openSheet(html);
 }
 function delAccount(id){
   const a=accounts.find(x=>x.id===id);
-  if(a.type!=='bank'){ toast('固定的账户不能删哦'); return; }
+  if(a.type!=='bank' && a.type!=='fund'){ toast('固定的账户不能删哦'); return; }
   accounts=accounts.filter(x=>x.id!==id); persistAcc(); toast('已删除'); openAccounts();
 }
 function addBank(){
@@ -974,6 +1039,17 @@ function saveBank(){
   const tail=document.getElementById('bankTail').value.trim();
   accounts.push({id:'bank_'+Date.now().toString(36), name: tail?name+' ···'+tail:name, type:'bank'});
   persistAcc(); closeSheet(); toast('银行卡添加好啦'); openAccounts();
+}
+function addFund(){
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">📈 添加基金</h3>'+
+    '<div class="field"><label>基金名（方便你辨认）</label><input class="inp" id="fundName" placeholder="例如 余额宝 / 某基金"></div>'+
+    '<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" onclick="saveFund()">保存</button></div>');
+}
+function saveFund(){
+  const name=document.getElementById('fundName').value.trim();
+  if(!name){ toast('给基金起个名字吧'); return; }
+  accounts.push({id:'fund_'+Date.now().toString(36), name, type:'fund'});
+  persistAcc(); closeSheet(); toast('基金添加好啦'); openAccounts();
 }
 
 function openCategories(){
