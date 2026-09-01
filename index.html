@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="花间账">
+<meta name="apple-mobile-web-app-title" content="小猪存钱罐">
 <meta name="theme-color" content="#FFF6F3">
-<title>花间账 · 我的小账本</title>
+<title>小猪存钱罐 · 我的小账本</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
@@ -403,7 +403,7 @@ h1.title{font-size:18px;font-weight:800;}
         <div class="set-item" onclick="importData()"><div class="em">📥</div><div class="t">导入备份<div class="s">从备份文件恢复数据</div></div><span class="arrow">›</span></div>
         <div class="set-item" onclick="clearData()"><div class="em">🗑️</div><div class="t">清空数据<div class="s">删除所有记账记录</div></div><span class="arrow">›</span></div>
       </div>
-      <div class="muted" style="text-align:center;margin-top:20px;padding-bottom:8px;">App Author: Whitney Xiao</div>
+      <div class="muted" style="text-align:center;margin-top:20px;padding-bottom:8px;">App Author: Whitney Xiao · <span id="appVersion"></span></div>
     </section>
 
   </div>
@@ -1193,7 +1193,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='花间账备份-'+todayStr()+'.json';
+  a.download='小猪存钱罐备份-'+todayStr()+'.json';
   document.body.appendChild(a); a.click(); a.remove();
   toast('备份已导出 📦');
 }
@@ -1244,12 +1244,35 @@ function checkBudget(){
   }
 }
 
+/* ================= 版本 & 更新说明 ================= */
+const APP_VERSION = '4.0';
+const SEEN_KEY = 'hj_seen_ver';
+function updLine(em,t,s){
+  return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
+}
+function maybeShowUpdate(){
+  if(localStorage.getItem(SEEN_KEY)===APP_VERSION) return;
+  localStorage.setItem(SEEN_KEY, APP_VERSION);
+  openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
+    '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
+      updLine('🤝','别人欠我','借出 / 还款自动联动，也算进总存款')+
+      updLine('📈','基金账户','账户管理可加基金，还能按账户校准存款')+
+      updLine('📊','统计看收入','支出 / 收入一键切换')+
+      updLine('🧮','记账表达式','输入 3×15、10+20 自动算结果')+
+      updLine('🎨','主题色系','7 种配色，含暗夜黑')+
+    '</div>'+
+    '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
+}
+
 /* ================= 初始化 ================= */
 applyTheme(settings.theme||'pink');
 buildKeypad();
 resetRecord();
 renderHome();
 checkBudget();
+maybeShowUpdate();
+const _avEl=document.getElementById('appVersion'); if(_avEl) _avEl.textContent='v'+APP_VERSION;
 
 /* PWA service worker（需通过 http/https 打开才生效） */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
