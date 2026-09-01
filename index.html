@@ -331,13 +331,6 @@ h1.title{font-size:18px;font-weight:800;}
       </div>
 
       <div class="card goal-card">
-        <div class="h-row"><span style="font-weight:800;">🤝 别人欠我</span><button class="act" onclick="openAddDebt()">＋ 添加</button></div>
-        <div class="muted" style="margin-top:6px;" id="debtTotal">未还 ¥0</div>
-        <div id="debtList" style="margin-top:10px;"></div>
-        <div class="empty" id="debtEmpty" style="display:none;"><span class="e">🤝</span>现在没人欠你钱</div>
-      </div>
-
-      <div class="card goal-card">
         <div class="h-row"><span style="font-weight:800;">🍬 月度消费阈值</span><button class="act" onclick="openThreshold()">设置</button></div>
         <div class="muted" style="margin-top:6px;" id="thresholdDesc">还没设置，点「设置」定一个本月最多花多少</div>
         <div id="thresholdProgress" style="display:none;">
@@ -361,6 +354,13 @@ h1.title{font-size:18px;font-weight:800;}
           <div class="ball-sub" id="goalSub">总存款 ¥0 / 目标 ¥0</div>
           <div class="ring-note" id="goalHint"></div>
         </div>
+      </div>
+
+      <div class="card goal-card">
+        <div class="h-row"><span style="font-weight:800;">🤝 别人欠我</span><button class="act" onclick="openAddDebt()">＋ 添加</button></div>
+        <div class="muted" style="margin-top:6px;" id="debtTotal">未还 ¥0</div>
+        <div id="debtList" style="margin-top:10px;"></div>
+        <div class="empty" id="debtEmpty" style="display:none;"><span class="e">🤝</span>现在没人欠你钱</div>
       </div>
     </section>
 
