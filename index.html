@@ -25,11 +25,18 @@
   --butter:#FFD166;
   --butter-soft:#FFF3D6;
   --danger:#FF6B6B;
+  --danger-soft:#FFECEC;
   --line:#F5E6E3;
   --radius:20px;
   --radius-sm:14px;
   --shadow:0 8px 24px rgba(247,108,130,.10);
   --shadow-soft:0 4px 14px rgba(247,108,130,.08);
+  --glow:0 8px 18px rgba(247,108,130,.28);
+  --glow-strong:0 8px 20px rgba(247,108,130,.35);
+  --glow-soft:0 -6px 20px rgba(247,108,130,.06);
+  --grad-primary:linear-gradient(135deg,#FFA8B8,#FF7E97);
+  --grad-hero:linear-gradient(135deg,#FFB3C1 0%,#FF8FA3 55%,#F77E9C 100%);
+  --grad-bar:linear-gradient(90deg,#FFD166,#FF8FA3);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
@@ -49,7 +56,7 @@ input,textarea,select{font-family:inherit;}
 #app{height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative;}
 
 /* view area */
-#views{flex:1;overflow-y:auto;position:relative;-webkit-overflow-scrolling:touch;padding-bottom:20px;}
+#views{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;-webkit-overflow-scrolling:touch;padding-bottom:20px;}
 .view{display:none;padding:18px 20px 24px;animation:fade .22s ease;}
 .view.active{display:block;}
 @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
@@ -62,7 +69,7 @@ input,textarea,select{font-family:inherit;}
   background:var(--surface);
   border-top:1px solid var(--line);
   padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  box-shadow:0 -6px 20px rgba(247,108,130,.06);
+  box-shadow:var(--glow-soft);
 }
 .nav-item{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -77,11 +84,11 @@ input,textarea,select{font-family:inherit;}
 }
 .record-btn{
   width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(135deg,#FFA8B8,#FF7E97);
+  background:var(--grad-primary);
   display:flex;align-items:center;justify-content:center;
-  margin-top:-22px;box-shadow:0 8px 20px rgba(247,108,130,.35);
+  margin-top:-22px;box-shadow:var(--glow-strong);
   color:#fff;font-size:30px;font-weight:400;
-  border:4px solid #fff;
+  border:4px solid var(--bg);
   transition:transform .15s;
 }
 .record-btn:active{transform:scale(.92);}
@@ -95,9 +102,9 @@ h1.title{font-size:18px;font-weight:800;}
 
 /* hero (signature) */
 .hero{
-  background:linear-gradient(135deg,#FFB3C1 0%,#FF8FA3 55%,#F77E9C 100%);
+  background:var(--grad-hero);
   border-radius:26px;padding:22px 22px 20px;color:#fff;position:relative;overflow:hidden;
-  box-shadow:0 12px 30px rgba(247,108,130,.28);
+  box-shadow:var(--glow);
 }
 .hero::after{
   content:"";position:absolute;right:-30px;top:-30px;width:130px;height:130px;
@@ -123,7 +130,7 @@ h1.title{font-size:18px;font-weight:800;}
 .bar-wrap{margin-top:16px;}
 .bar-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px;}
 .bar{height:12px;border-radius:999px;background:var(--primary-soft);overflow:hidden;}
-.bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FFD166,#FF8FA3);transition:width .5s ease;}
+.bar>i{display:block;height:100%;border-radius:999px;background:var(--grad-bar);transition:width .5s ease;}
 .bar.warn>i{background:linear-gradient(90deg,#FF8FA3,#FF6B6B);}
 
 /* section */
@@ -146,17 +153,21 @@ h1.title{font-size:18px;font-weight:800;}
 .empty .e{font-size:44px;display:block;margin-bottom:8px;}
 
 /* keypad */
-#recordView .type-toggle{display:flex;background:var(--primary-soft);border-radius:999px;padding:4px;margin-bottom:16px;}
-#recordView .type-toggle button{flex:1;padding:9px;border-radius:999px;font-weight:700;color:var(--muted);font-size:15px;}
-#recordView .type-toggle button.on{background:#fff;color:var(--primary-deep);box-shadow:var(--shadow-soft);}
+.type-toggle{display:flex;background:var(--primary-soft);border-radius:999px;padding:4px;margin-bottom:16px;}
+.type-toggle button{flex:1;padding:9px;border-radius:999px;font-weight:700;color:var(--muted);font-size:15px;}
+.type-toggle button.on{background:var(--surface);color:var(--primary-deep);box-shadow:var(--shadow-soft);}
 .amount-display{text-align:center;padding:16px 0 6px;font-size:44px;font-weight:800;letter-spacing:-.5px;}
 .amount-display .cur{font-size:22px;color:var(--primary-deep);font-weight:700;margin-right:4px;}
-.amount-display .dim{color:#E8D7D7;}
-.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 20px;}
-.keypad button{height:56px;border-radius:18px;background:var(--surface);font-size:22px;font-weight:700;box-shadow:var(--shadow-soft);color:var(--ink);}
-.keypad button:active{background:var(--primary-soft);}
-.keypad button.fn{color:var(--primary-deep);font-size:18px;}
-.keypad button.ok{background:linear-gradient(135deg,#FFA8B8,#FF7E97);color:#fff;font-size:26px;}
+.amount-display .dim{color:var(--muted);}
+.keypad{margin:14px 0 20px;}
+.op-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;}
+.op-row button{height:42px;border-radius:14px;background:var(--primary-soft);font-size:20px;font-weight:700;color:var(--primary-deep);}
+.op-row button:active{opacity:.7;}
+.keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.keypad-grid button{height:56px;border-radius:18px;background:var(--surface);font-size:22px;font-weight:700;box-shadow:var(--shadow-soft);color:var(--ink);}
+.keypad-grid button:active{background:var(--primary-soft);}
+.keypad-grid button.fn{color:var(--primary-deep);font-size:18px;}
+.keypad-grid button.ok{background:var(--grad-primary);color:#fff;font-size:26px;}
 
 /* category grid */
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
@@ -198,30 +209,36 @@ h1.title{font-size:18px;font-weight:800;}
 
 /* buttons */
 .btn{display:block;width:100%;padding:13px;border-radius:16px;font-size:15px;font-weight:800;text-align:center;}
-.btn.primary{background:linear-gradient(135deg,#FFA8B8,#FF7E97);color:#fff;box-shadow:0 8px 18px rgba(247,108,130,.28);}
+.btn.primary{background:var(--grad-primary);color:#fff;box-shadow:var(--glow);}
 .btn.ghost{background:var(--surface);color:var(--primary-deep);box-shadow:var(--shadow-soft);}
-.btn.danger{background:#FFECEC;color:var(--danger);}
+.btn.danger{background:var(--danger-soft);color:var(--danger);}
 .btn-row{display:flex;gap:10px;margin-top:10px;}
 .btn-row .btn{flex:1;}
 
 /* segmented control */
 .seg{display:flex;background:var(--primary-soft);border-radius:12px;padding:4px;margin-bottom:14px;gap:4px;}
 .seg-btn{flex:1;padding:9px 0;border-radius:9px;font-size:14px;font-weight:700;color:var(--muted);background:transparent;border:none;}
-.seg-btn.active{background:#fff;color:var(--primary-deep);box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.seg-btn.active{background:var(--surface);color:var(--primary-deep);box-shadow:0 1px 4px rgba(0,0,0,.06);}
+
+/* theme picker */
+.theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.theme-swatch{display:flex;align-items:center;gap:10px;padding:14px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow-soft);font-size:14px;font-weight:700;color:var(--ink);}
+.theme-swatch .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--muted);}
+.theme-swatch.sel{outline:2px solid var(--primary-deep);}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(74,59,59,.4);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);}
 #modal.show{display:flex;}
 .sheet{background:var(--bg);border-radius:26px 26px 0 0;width:100%;max-width:520px;max-height:86dvh;overflow-y:auto;padding:20px 20px calc(24px + env(safe-area-inset-bottom));animation:up .25s ease;}
 @keyframes up{from{transform:translateY(30px);opacity:0;}to{transform:none;opacity:1;}}
-.sheet .grab{width:40px;height:5px;border-radius:99px;background:#E8D7D7;margin:0 auto 16px;}
+.sheet .grab{width:40px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 16px;}
 
 /* toast */
 #toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:rgba(74,59,59,.92);color:#fff;padding:11px 20px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:60;white-space:nowrap;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* confirm dialog */
-.confirm-card{background:#fff;border-radius:22px;padding:22px;text-align:center;max-width:320px;margin:auto;width:90%;animation:up .2s ease;}
+.confirm-card{background:var(--surface);border-radius:22px;padding:22px;text-align:center;max-width:320px;margin:auto;width:90%;animation:up .2s ease;}
 .confirm-card .t{font-weight:800;font-size:17px;margin-bottom:6px;}
 .confirm-card .s{color:var(--muted);font-size:14px;margin-bottom:18px;}
 
@@ -240,7 +257,7 @@ h1.title{font-size:18px;font-weight:800;}
 .rank-item .pc{font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;}
 .rank-item .vl{font-weight:800;font-size:14px;}
 .rank-item .mini-bar{height:6px;border-radius:99px;background:var(--primary-soft);flex:1;max-width:90px;overflow:hidden;}
-.rank-item .mini-bar>i{display:block;height:100%;background:linear-gradient(90deg,#FFB3C1,#FF8FA3);border-radius:99px;}
+.rank-item .mini-bar>i{display:block;height:100%;background:var(--grad-primary);border-radius:99px;}
 </style>
 </head>
 <body>
@@ -277,12 +294,16 @@ h1.title{font-size:18px;font-weight:800;}
         <span class="lbl" id="statsMonth">2026年9月</span>
         <button onclick="shiftMonth(1)">›</button>
       </div>
+      <div class="type-toggle" id="statsToggle" style="margin:14px 0 0;">
+        <button class="on" data-type="expense" onclick="setStatsType('expense')">支出</button>
+        <button data-type="income" onclick="setStatsType('income')">收入</button>
+      </div>
       <div class="card">
         <div class="donut-wrap"><canvas id="donut" width="180" height="180"></canvas>
-          <div class="donut-center"><div class="v" id="donutTotal">¥0</div><div class="k">本月支出</div></div>
+          <div class="donut-center"><div class="v" id="donutTotal">¥0</div><div class="k" id="donutKind">本月支出</div></div>
         </div>
         <div class="rank-list" id="rankList"></div>
-        <div class="empty" id="statsEmpty" style="display:none;"><span class="e">🌷</span>这个月还没有支出记录</div>
+        <div class="empty" id="statsEmpty" style="display:none;"><span class="e">🌷</span><span id="statsEmptyText">这个月还没有支出记录</span></div>
       </div>
     </section>
 
@@ -375,13 +396,14 @@ h1.title{font-size:18px;font-weight:800;}
       <h1 class="title">我的</h1>
       <div style="margin-top:14px;">
         <div class="set-item" onclick="openNickname()"><div class="em">✏️</div><div class="t">昵称<div class="s" id="nicknameLabel">还没设置</div></div><span class="arrow">›</span></div>
-        <div class="set-item" onclick="openAccounts()"><div class="em">💳</div><div class="t">账户管理<div class="s">支付宝、微信、多张银行卡</div></div><span class="arrow">›</span></div>
+        <div class="set-item" onclick="openAccounts()"><div class="em">💳</div><div class="t">账户管理<div class="s">支付宝、微信、银行卡、基金</div></div><span class="arrow">›</span></div>
         <div class="set-item" onclick="openCategories()"><div class="em">🏷️</div><div class="t">分类管理<div class="s">自定义分类和 emoji</div></div><span class="arrow">›</span></div>
+        <div class="set-item" onclick="openTheme()"><div class="em">🎨</div><div class="t">主题颜色<div class="s" id="themeLabel">蜜桃粉</div></div><span class="arrow">›</span></div>
         <div class="set-item" onclick="exportData()"><div class="em">📦</div><div class="t">导出备份<div class="s">把账本导出成文件保存</div></div><span class="arrow">›</span></div>
         <div class="set-item" onclick="importData()"><div class="em">📥</div><div class="t">导入备份<div class="s">从备份文件恢复数据</div></div><span class="arrow">›</span></div>
         <div class="set-item" onclick="clearData()"><div class="em">🗑️</div><div class="t">清空数据<div class="s">删除所有记账记录</div></div><span class="arrow">›</span></div>
-        <div class="set-item"><div class="em">🌸</div><div class="t">花间账<div class="s">纯本地 · 无广告 · 数据只在你手机里</div></div></div>
       </div>
+      <div class="muted" style="text-align:center;margin-top:20px;padding-bottom:8px;">App Author: Whitney Xiao</div>
     </section>
 
   </div>
@@ -441,7 +463,7 @@ let categories = load(K.cat, JSON.parse(JSON.stringify(DEFAULT_CATS)));
 if(!categories.expense.find(c=>c.id==='lend')) categories.expense.push({id:'lend', em:'🤝', n:'借出'});
 if(!categories.income.find(c=>c.id==='repay')) categories.income.push({id:'repay', em:'💵', n:'还款'});
 save(K.cat, categories);
-let settings = Object.assign({threshold:null, goal:null, nickname:'', depositBase:null, depositBaseAt:null}, load(K.set, {}));
+let settings = Object.assign({threshold:null, goal:null, nickname:'', depositBase:null, depositBaseAt:null, theme:null}, load(K.set, {}));
 if(settings.depositBase==null && settings.initialDeposit!=null){ settings.depositBase = settings.initialDeposit; settings.depositBaseAt = 0; }
 let debts = load(K.debt, []);
 
@@ -577,14 +599,37 @@ function setType(t){
 }
 function buildKeypad(){
   const kp=document.getElementById('keypad'); kp.innerHTML='';
+  kp.innerHTML='<div class="op-row"></div><div class="keypad-grid"></div>';
+  const opRow=kp.querySelector('.op-row');
+  ['+','−','×','÷'].forEach(op=>{
+    const b=document.createElement('button');
+    b.textContent=op; b.className='op';
+    b.onclick=()=>appendOp(op);
+    opRow.appendChild(b);
+  });
+  const grid=kp.querySelector('.keypad-grid');
   const keys=['1','2','3','4','5','6','7','8','9','.','0','⌫'];
   keys.forEach(k=>{
     const b=document.createElement('button');
     if(k==='⌫'){ b.textContent='⌫'; b.className='fn'; b.onclick=()=>{ recAmount=recAmount.slice(0,-1); renderAmount(); }; }
     else if(k==='.'){ b.textContent='.'; b.className='fn'; b.onclick=()=>{ if(!recAmount.includes('.')){ recAmount = recAmount===''?'0.':recAmount+'.'; renderAmount(); } }; }
-    else { b.textContent=k; b.onclick=()=>{ if(recAmount.replace('.','').length>=9) return; if(k==='0'&&recAmount==='0') return; if(recAmount==='0'&&k!=='0') recAmount=k; else recAmount+=k; renderAmount(); }; }
-    kp.appendChild(b);
+    else { b.textContent=k; b.onclick=()=>{ const digits=recAmount.replace(/[^0-9]/g,'').length; if(digits>=9) return; if(k==='0'&&recAmount==='0') return; if(recAmount==='0'&&k!=='0') recAmount=k; else recAmount+=k; renderAmount(); }; }
+    grid.appendChild(b);
   });
+}
+function appendOp(op){
+  if(recAmount==='') return;
+  if(/[+\-−×÷]$/.test(recAmount)) recAmount=recAmount.slice(0,-1)+op;
+  else recAmount+=op;
+  renderAmount();
+}
+function calcExpr(expr){
+  const s=expr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+  if(!/^[0-9+\-*/().\s]+$/.test(s)) return null;
+  try{
+    const v=Function('"use strict";return ('+s+');')();
+    return (typeof v==='number'&&isFinite(v))?Math.round(v*100)/100:null;
+  }catch(e){ return null; }
 }
 function renderAmount(){
   const s=document.getElementById('amountShow');
@@ -626,7 +671,11 @@ function renderAccountChips(){
   });
 }
 function saveTx(){
-  const amount=parseFloat(recAmount);
+  let amount=parseFloat(recAmount);
+  if(/[+\-−×÷]/.test(recAmount)){
+    const v=calcExpr(recAmount);
+    amount = (v==null)?NaN:v;
+  }
   if(!amount || amount<=0){ toast('先输入金额呀'); return; }
   if(!recCat){ toast('选一个分类哦'); return; }
   if(!recAccount){ toast('选一个账户哦'); return; }
@@ -655,6 +704,12 @@ function saveTx(){
 
 /* ================= 统计 ================= */
 let statsMonth = monthOf(todayStr());
+let statsType = 'expense';
+function setStatsType(t){
+  statsType=t;
+  document.querySelectorAll('#statsToggle button').forEach(b=>b.classList.toggle('on', b.dataset.type===t));
+  renderStats();
+}
 function shiftMonth(d){
   const [y,m]=statsMonth.split('-').map(Number);
   const dt=new Date(y, m-1+d, 1);
@@ -665,24 +720,24 @@ function renderStats(){
   const [y,m]=statsMonth.split('-');
   document.getElementById('statsMonth').textContent = y+'年'+Number(m)+'月';
   const monthTx = tx.filter(t=>monthOf(t.date)===statsMonth);
-  const expTx = monthTx.filter(t=>t.type==='expense');
-  const exp = expTx.reduce((s,t)=>s+t.amount,0);
-  const inc = monthTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('donutTotal').textContent = money(exp);
+  const selTx = monthTx.filter(t=>t.type===statsType);
+  const sum = selTx.reduce((s,t)=>s+t.amount,0);
+  document.getElementById('donutTotal').textContent = money(sum);
+  document.getElementById('donutKind').textContent = statsType==='expense'?'本月支出':'本月收入';
 
   // 分类汇总
   const byCat = {};
-  expTx.forEach(t=>{ byCat[t.cat]=(byCat[t.cat]||0)+t.amount; });
+  selTx.forEach(t=>{ byCat[t.cat]=(byCat[t.cat]||0)+t.amount; });
   const arr = Object.entries(byCat).map(([id,amt])=>({id,amt})).sort((a,b)=>b.amt-a.amt);
 
   drawDonut(arr);
   const rl=document.getElementById('rankList'); rl.innerHTML='';
   const se=document.getElementById('statsEmpty');
-  if(arr.length===0){ se.style.display='block'; return; }
+  if(arr.length===0){ document.getElementById('statsEmptyText').textContent = statsType==='expense'?'这个月还没有支出记录':'这个月还没有收入记录'; se.style.display='block'; return; }
   se.style.display='none';
   arr.forEach((it,i)=>{
     const c=catById(it.id);
-    const pct = exp>0?Math.round(it.amt/exp*100):0;
+    const pct = sum>0?Math.round(it.amt/sum*100):0;
     const el=document.createElement('div'); el.className='rank-item';
     el.innerHTML='<span class="em">'+c.em+'</span><span class="nm">'+c.n+'</span>'+
       '<span class="pc">'+pct+'%</span><span class="mini-bar"><i style="width:'+pct+'%"></i></span>'+
@@ -708,7 +763,7 @@ function drawDonut(arr){
     start+=ang;
   });
   // inner subtle ring
-  ctx.beginPath(); ctx.strokeStyle='#FFF6F3'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.strokeStyle=cssVar('--bg')||'#FFF6F3'; ctx.lineWidth=1;
   ctx.arc(cx,cy,r-w/2-2,0,Math.PI*2); ctx.stroke();
 }
 
@@ -778,7 +833,7 @@ function renderGoals(){
     const m=monthOf(todayStr());
     const exp=tx.filter(t=>t.type==='expense'&&monthOf(t.date)===m).reduce((s,t)=>s+t.amount,0);
     const pct=Math.min(100,Math.round(exp/th*100));
-    let color='#FF7E97';
+    let color=cssVar('--primary-deep')||'#FF7E97';
     if(pct>=100) color='#FF6B6B'; else if(pct>=80) color='#FF9F43';
     _ballState.threshold.pct=pct;
     _ballState.threshold.color=color;
@@ -996,6 +1051,42 @@ function saveGoal(){
 function renderSettings(){
   const el=document.getElementById('nicknameLabel');
   if(el) el.textContent = (settings.nickname && settings.nickname.trim()) ? settings.nickname.trim() : '还没设置，点这里取个昵称';
+  const tl=document.getElementById('themeLabel');
+  if(tl) tl.textContent = (THEMES[settings.theme||'pink']||THEMES.pink).n;
+}
+const THEMES = {
+  pink:{n:'蜜桃粉',sw:'#FF8FA3',v:{'--bg':'#FFF6F3','--surface':'#FFFFFF','--ink':'#4A3B3B','--muted':'#B59C9C','--primary':'#FF8FA3','--primary-deep':'#F76C82','--primary-soft':'#FFE3E9','--mint-soft':'#E2F6EC','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#F5E6E3','--shadow':'0 8px 24px rgba(247,108,130,.10)','--shadow-soft':'0 4px 14px rgba(247,108,130,.08)','--grad-primary':'linear-gradient(135deg,#FFA8B8,#FF7E97)','--grad-hero':'linear-gradient(135deg,#FFB3C1 0%,#FF8FA3 55%,#F77E9C 100%)','--grad-bar':'linear-gradient(90deg,#FFD166,#FF8FA3)'}},
+  purple:{n:'香芋紫',sw:'#A78BFA',v:{'--bg':'#F7F4FF','--surface':'#FFFFFF','--ink':'#3B3549','--muted':'#A79FC0','--primary':'#A78BFA','--primary-deep':'#8B5CF6','--primary-soft':'#EDE7FF','--mint-soft':'#E2F6EC','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#EAE4F7','--shadow':'0 8px 24px rgba(139,92,246,.12)','--shadow-soft':'0 4px 14px rgba(139,92,246,.08)','--grad-primary':'linear-gradient(135deg,#C4B5FD,#8B5CF6)','--grad-hero':'linear-gradient(135deg,#C4B5FD 0%,#A78BFA 55%,#8B5CF6 100%)','--grad-bar':'linear-gradient(90deg,#A78BFA,#8B5CF6)','--glow':'0 8px 18px rgba(139,92,246,.28)','--glow-strong':'0 8px 20px rgba(139,92,246,.35)','--glow-soft':'0 -6px 20px rgba(139,92,246,.06)'}},
+  blue:{n:'天空蓝',sw:'#6AA9FF',v:{'--bg':'#F2F7FF','--surface':'#FFFFFF','--ink':'#33404F','--muted':'#9DB0C5','--primary':'#6AA9FF','--primary-deep':'#4A8AF4','--primary-soft':'#E1EEFF','--mint-soft':'#E2F6EC','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#E2EBF7','--shadow':'0 8px 24px rgba(74,138,244,.12)','--shadow-soft':'0 4px 14px rgba(74,138,244,.08)','--grad-primary':'linear-gradient(135deg,#8FC1FF,#4A8AF4)','--grad-hero':'linear-gradient(135deg,#8FC1FF 0%,#6AA9FF 55%,#4A8AF4 100%)','--grad-bar':'linear-gradient(90deg,#6AA9FF,#4A8AF4)','--glow':'0 8px 18px rgba(74,138,244,.28)','--glow-strong':'0 8px 20px rgba(74,138,244,.35)','--glow-soft':'0 -6px 20px rgba(74,138,244,.06)'}},
+  yellow:{n:'暖阳黄',sw:'#F5B942',v:{'--bg':'#FFFBF0','--surface':'#FFFFFF','--ink':'#4A4233','--muted':'#C0B08A','--primary':'#F5B942','--primary-deep':'#E8A020','--primary-soft':'#FFF1D6','--mint-soft':'#E2F6EC','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#F3E8CF','--shadow':'0 8px 24px rgba(232,160,32,.14)','--shadow-soft':'0 4px 14px rgba(232,160,32,.09)','--grad-primary':'linear-gradient(135deg,#FFD166,#F0A030)','--grad-hero':'linear-gradient(135deg,#FFD166 0%,#F5B942 55%,#E8A020 100%)','--grad-bar':'linear-gradient(90deg,#FFD166,#F0A030)','--glow':'0 8px 18px rgba(232,160,32,.28)','--glow-strong':'0 8px 20px rgba(232,160,32,.35)','--glow-soft':'0 -6px 20px rgba(232,160,32,.06)'}},
+  green:{n:'薄荷绿',sw:'#5FC99A',v:{'--bg':'#F1FBF5','--surface':'#FFFFFF','--ink':'#33423A','--muted':'#9CBBAA','--primary':'#5FC99A','--primary-deep':'#3BAE7C','--primary-soft':'#DFF5E9','--mint-soft':'#DFF5E9','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#E0F0E8','--shadow':'0 8px 24px rgba(59,174,124,.12)','--shadow-soft':'0 4px 14px rgba(59,174,124,.08)','--grad-primary':'linear-gradient(135deg,#7BD3A5,#3BAE7C)','--grad-hero':'linear-gradient(135deg,#7BD3A5 0%,#5FC99A 55%,#3BAE7C 100%)','--grad-bar':'linear-gradient(90deg,#7BD3A5,#3BAE7C)','--glow':'0 8px 18px rgba(59,174,124,.28)','--glow-strong':'0 8px 20px rgba(59,174,124,.35)','--glow-soft':'0 -6px 20px rgba(59,174,124,.06)'}},
+  white:{n:'简约白',sw:'#C4C4CA',v:{'--bg':'#F7F7F8','--surface':'#FFFFFF','--ink':'#3A3A3C','--muted':'#A6A6AC','--primary':'#8E8E93','--primary-deep':'#6E6E73','--primary-soft':'#ECECEF','--mint-soft':'#E8F2EC','--butter-soft':'#FFF3D6','--danger-soft':'#FFECEC','--line':'#E8E8EC','--shadow':'0 8px 24px rgba(60,60,67,.10)','--shadow-soft':'0 4px 14px rgba(60,60,67,.07)','--grad-primary':'linear-gradient(135deg,#B8B8BE,#8E8E93)','--grad-hero':'linear-gradient(135deg,#C0C0C6 0%,#A0A0A6 55%,#8E8E93 100%)','--grad-bar':'linear-gradient(90deg,#B8B8BE,#8E8E93)','--glow':'0 8px 18px rgba(60,60,67,.20)','--glow-strong':'0 8px 20px rgba(60,60,67,.28)','--glow-soft':'0 -6px 20px rgba(60,60,67,.06)'}},
+  dark:{n:'暗夜黑',sw:'#0E0E10',v:{'--bg':'#151517','--surface':'#242426','--ink':'#F2F2F7','--muted':'#8E8E93','--primary':'#C7C7CC','--primary-deep':'#8E8E93','--primary-soft':'#333336','--mint':'#6FC9A0','--mint-soft':'#22382E','--butter':'#FFD166','--butter-soft':'#3A3322','--danger':'#FF6B6B','--danger-soft':'#3A2424','--line':'#3A3A3C','--shadow':'0 8px 24px rgba(0,0,0,.4)','--shadow-soft':'0 4px 14px rgba(0,0,0,.3)','--grad-primary':'linear-gradient(135deg,#6E6E73,#454549)','--grad-hero':'linear-gradient(135deg,#3A3A3E 0%,#2E2E32 55%,#242426 100%)','--grad-bar':'linear-gradient(90deg,#6E6E73,#3A3A3C)','--glow':'0 8px 18px rgba(0,0,0,.45)','--glow-strong':'0 8px 20px rgba(0,0,0,.55)','--glow-soft':'0 -6px 20px rgba(0,0,0,.3)'}}
+};
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function currentThemeKey(){ return settings.theme||'pink'; }
+function applyTheme(key){
+  const t=THEMES[key]||THEMES.pink;
+  const r=document.documentElement.style;
+  Object.entries(t.v).forEach(([k,v])=>r.setProperty(k,v));
+  r.setProperty('color-scheme', key==='dark'?'dark':'light');
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.setAttribute('content', t.v['--bg']||'#FFF6F3');
+  settings.theme = (key==='pink'?null:key);
+  persistSet();
+  const lbl=document.getElementById('themeLabel');
+  if(lbl) lbl.textContent=t.n;
+  if(document.getElementById('goalsView').classList.contains('active')) renderGoals();
+}
+function openTheme(){
+  let html='<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">🎨 主题颜色</h3>';
+  html+='<div class="theme-grid">';
+  Object.entries(THEMES).forEach(([key,t])=>{
+    html+='<button class="theme-swatch'+(currentThemeKey()===key?' sel':'')+'" onclick="applyTheme(\''+key+'\');closeSheet();">'+
+      '<span class="dot" style="background:'+t.sw+'"></span><span>'+t.n+'</span></button>';
+  });
+  html+='</div>';
+  openSheet(html);
 }
 function openNickname(){
   openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">✏️ 我的昵称</h3>'+
@@ -1154,6 +1245,7 @@ function checkBudget(){
 }
 
 /* ================= 初始化 ================= */
+applyTheme(settings.theme||'pink');
 buildKeypad();
 resetRecord();
 renderHome();
