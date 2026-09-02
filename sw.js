@@ -1,4 +1,4 @@
-const CACHE = 'huajian-zhang-v4';
+const CACHE = 'huajian-zhang-v5';
 const ASSETS = [
   './',
   './index.html',

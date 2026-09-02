@@ -745,12 +745,21 @@ function renderStats(){
     rl.appendChild(el);
   });
 }
+const DONUT_PALETTES = {
+  pink:  ['#FF8FA3','#FFB3C1','#FFD166','#7BD3A5','#B0A8E8','#7EC8E3','#FFB98A','#F79ED0','#C9B6E4','#A8D8B9'],
+  purple:['#A78BFA','#C4B5FD','#FFD166','#7BD3A5','#FF8FA3','#7EC8E3','#FFB98A','#F79ED0','#8B5CF6','#A8D8B9'],
+  blue:  ['#6AA9FF','#8FC1FF','#FFD166','#7BD3A5','#FF8FA3','#A78BFA','#FFB98A','#7EC8E3','#4A8AF4','#A8D8B9'],
+  yellow:['#F5B942','#FFD166','#7BD3A5','#FF8FA3','#A78BFA','#7EC8E3','#FFB98A','#F79ED0','#E8A020','#A8D8B9'],
+  green: ['#5FC99A','#7BD3A5','#FFD166','#FF8FA3','#A78BFA','#7EC8E3','#FFB98A','#F79ED0','#3BAE7C','#A8D8B9'],
+  white: ['#8E8E93','#B8B8BE','#FFD166','#7BD3A5','#A78BFA','#7EC8E3','#FFB98A','#F79ED0','#6E6E73','#A8D8B9'],
+  dark:  ['#C7C7CC','#8E8E93','#FFD166','#6FC9A0','#A78BFA','#7EC8E3','#FFB98A','#F79ED0','#6E6E73','#5FC99A']
+};
 function drawDonut(arr){
   const cv=document.getElementById('donut'); const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,180,180);
   if(arr.length===0) return;
   const total=arr.reduce((s,a)=>s+a.amt,0);
-  const colors=['#FF8FA3','#FFD166','#7BD3A5','#FFB3C1','#B0A8E8','#7EC8E3','#FFB98A','#C9B6E4','#F79ED0','#A8D8B9'];
+  const colors=DONUT_PALETTES[currentThemeKey()]||DONUT_PALETTES.pink;
   let start=-Math.PI/2;
   const cx=90, cy=90, r=68, w=26;
   arr.forEach((it,i)=>{
@@ -1245,7 +1254,7 @@ function checkBudget(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '4.0';
+const APP_VERSION = '4.1';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1256,11 +1265,8 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('🤝','别人欠我','借出 / 还款自动联动，也算进总存款')+
-      updLine('📈','基金账户','账户管理可加基金，还能按账户校准存款')+
-      updLine('📊','统计看收入','支出 / 收入一键切换')+
-      updLine('🧮','记账表达式','输入 3×15、10+20 自动算结果')+
-      updLine('🎨','主题色系','7 种配色，含暗夜黑')+
+      updLine('🐷','全新名字','从「花间账」改名「小猪存钱罐」')+
+      updLine('🎨','环形图随主题变','统计页分类配色跟着主题色走')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
