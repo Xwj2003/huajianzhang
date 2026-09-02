@@ -148,6 +148,22 @@ h1.title{font-size:18px;font-weight:800;}
 .tx .amt.expense{color:var(--ink);}
 .tx .amt.income{color:var(--mint);}
 
+/* daily breakdown */
+.day-group{margin-bottom:14px;}
+.day-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14px;margin-bottom:6px;}
+.day-head .day-sum{color:var(--primary-deep);font-weight:800;}
+.day-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:14px;}
+.day-item:last-child{border-bottom:none;}
+.day-item .em{font-size:18px;width:26px;text-align:center;flex:0 0 auto;}
+.day-item .nm{font-weight:600;flex:0 0 auto;}
+.day-item .nt{flex:1;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.day-item .amt{margin-left:auto;font-weight:700;flex:0 0 auto;}
+.day-item .amt.expense{color:var(--ink);}
+.day-item .amt.income{color:var(--mint);}
+.day-head{cursor:pointer;}
+.day-head .caret{font-size:12px;color:var(--muted);margin-left:6px;}
+.day-item{cursor:pointer;}
+
 /* empty */
 .empty{text-align:center;padding:36px 20px;color:var(--muted);}
 .empty .e{font-size:44px;display:block;margin-bottom:8px;}
@@ -304,6 +320,12 @@ h1.title{font-size:18px;font-weight:800;}
         </div>
         <div class="rank-list" id="rankList"></div>
         <div class="empty" id="statsEmpty" style="display:none;"><span class="e">🌷</span><span id="statsEmptyText">这个月还没有支出记录</span></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="sec-title" style="margin:0 0 12px;">📅 每日明细</div>
+        <div id="dailyList"></div>
+        <div class="empty" id="dailyEmpty" style="display:none;"><span class="e">🌷</span><span id="dailyEmptyText">这个月还没有记录</span></div>
       </div>
     </section>
 
@@ -572,8 +594,9 @@ function renderHome(){
   todayTx.forEach(t=>{
     const c=catById(t.cat);
     const el=document.createElement('div'); el.className='tx';
+    const noteHtml = t.note ? '<div class="d">'+esc(t.note)+'</div>' : '';
     el.innerHTML = '<div class="cat '+t.type+'">'+c.em+'</div>'+
-      '<div class="info"><div class="n">'+c.n+'</div><div class="d">'+t.accountName+'</div></div>'+
+      '<div class="info"><div class="n">'+c.n+'</div><div class="d">'+t.accountName+'</div>'+noteHtml+'</div>'+
       '<div class="amt '+t.type+'">'+(t.type==='expense'?'-':'+')+money(t.amount)+'</div>';
     el.onclick=()=>confirmDel(t.id);
     list.appendChild(el);
@@ -587,7 +610,7 @@ function confirmDel(id){
 }
 function delTx(id){
   tx = tx.filter(t=>t.id!==id); persistTx(); closeSheet(); toast('已删除');
-  renderHome();
+  renderHome(); renderStats();
 }
 
 /* ================= 记一笔 ================= */
@@ -731,6 +754,7 @@ function renderStats(){
   const arr = Object.entries(byCat).map(([id,amt])=>({id,amt})).sort((a,b)=>b.amt-a.amt);
 
   drawDonut(arr);
+  renderDaily(selTx);
   const rl=document.getElementById('rankList'); rl.innerHTML='';
   const se=document.getElementById('statsEmpty');
   if(arr.length===0){ document.getElementById('statsEmptyText').textContent = statsType==='expense'?'这个月还没有支出记录':'这个月还没有收入记录'; se.style.display='block'; return; }
@@ -744,6 +768,80 @@ function renderStats(){
       '<span class="vl" style="min-width:64px;text-align:right;">'+money(it.amt)+'</span>';
     rl.appendChild(el);
   });
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderDaily(selTx){
+  const list=document.getElementById('dailyList');
+  const empty=document.getElementById('dailyEmpty');
+  list.innerHTML='';
+  if(selTx.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  const byDay={};
+  selTx.forEach(t=>{ (byDay[t.date]=byDay[t.date]||[]).push(t); });
+  const days=Object.keys(byDay).sort();
+  days.forEach((d,di)=>{
+    const arr=byDay[d].sort((a,b)=>b.createdAt-a.createdAt);
+    const daySum=arr.reduce((s,t)=>s+t.amount,0);
+    const [mm,dd]=d.slice(5).split('-');
+    const gid='dg'+di;
+    let html='<div class="day-group"><div class="day-head" onclick="toggleDay(\''+gid+'\')">'+
+      '<span>'+Number(mm)+'月'+Number(dd)+'日<small class="muted"> · '+arr.length+'笔</small></span>'+
+      '<span class="day-sum">'+money(daySum)+'<span class="caret" id="'+gid+'c">▾</span></span></div>'+
+      '<div class="day-body" id="'+gid+'" style="display:none;">';
+    arr.forEach(t=>{
+      const c=catById(t.cat);
+      html+='<div class="day-item" onclick="openEditTx(\''+t.id+'\')"><span class="em">'+c.em+'</span><span class="nm">'+c.n+'</span>'+
+        '<span class="nt">'+esc(t.note||t.accountName||'')+'</span>'+
+        '<span class="amt '+t.type+'">'+(t.type==='expense'?'-':'+')+money(t.amount)+'</span></div>';
+    });
+    html+='</div></div>';
+    list.insertAdjacentHTML('beforeend', html);
+  });
+}
+function toggleDay(gid){
+  const b=document.getElementById(gid);
+  const c=document.getElementById(gid+'c');
+  if(!b) return;
+  const open = b.style.display==='none';
+  b.style.display = open?'block':'none';
+  if(c) c.textContent = open?'▴':'▾';
+}
+let editId=null;
+function openEditTx(id){
+  const t=tx.find(x=>x.id===id);
+  if(!t) return;
+  editId=id;
+  const L=txt=>'<div class="muted" style="font-size:12px;font-weight:700;margin:12px 0 4px;">'+txt+'</div>';
+  const cats = t.type==='expense'?categories.expense:categories.income;
+  const catOpts = cats.map(c=>'<option value="'+c.id+'"'+(c.id===t.cat?' selected':'')+'>'+c.em+' '+c.n+'</option>').join('');
+  const accOpts = accounts.map(a=>'<option value="'+a.id+'"'+(a.id===t.account?' selected':'')+'>'+accountLabel(a)+'</option>').join('');
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:4px;">✏️ 编辑这笔</h3>'+
+    L('金额')+'<input class="inp" id="editAmt" value="'+t.amount+'" inputmode="decimal">'+
+    L('备注')+'<input class="inp" id="editNote" maxlength="40" value="'+esc(t.note||'')+'">'+
+    L('分类')+'<select class="inp" id="editCat">'+catOpts+'</select>'+
+    L('账户')+'<select class="inp" id="editAcc">'+accOpts+'</select>'+
+    L('日期')+'<input class="inp" id="editDate" type="date" value="'+t.date+'">'+
+    '<div class="btn-row"><button class="btn ghost" onclick="delTx(\''+id+'\')">删除</button>'+
+    '<button class="btn primary" onclick="saveEditTx()">保存</button></div>');
+}
+function saveEditTx(){
+  const t=tx.find(x=>x.id===editId);
+  if(!t){ closeSheet(); return; }
+  const raw=document.getElementById('editAmt').value;
+  let amount=parseFloat(raw);
+  if(/[+\-−×÷]/.test(raw)){ const v=calcExpr(raw); amount=(v==null)?NaN:v; }
+  if(!amount||amount<=0){ toast('金额不对哦'); return; }
+  t.amount=amount;
+  t.note=document.getElementById('editNote').value.trim();
+  t.cat=document.getElementById('editCat').value;
+  const accId=document.getElementById('editAcc').value;
+  t.account=accId;
+  const acc=accounts.find(a=>a.id===accId); t.accountName=acc?acc.name:'';
+  t.date=document.getElementById('editDate').value||t.date;
+  persistTx(); closeSheet(); toast('改好啦 ✨');
+  renderHome(); renderStats();
 }
 const DONUT_PALETTES = {
   pink:  ['#FF8FA3','#FFB3C1','#FFD166','#7BD3A5','#B0A8E8','#7EC8E3','#FFB98A','#F79ED0','#C9B6E4','#A8D8B9'],
@@ -1254,7 +1352,7 @@ function checkBudget(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.3';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1265,8 +1363,8 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('🐷','全新名字','从「花间账」改名「小猪存钱罐」')+
-      updLine('🎨','环形图随主题变','统计页分类配色跟着主题色走')+
+      updLine('📂','每日明细可折叠','统计页点某天展开 / 收起当天明细')+
+      updLine('✏️','点某笔可编辑','改金额、备注、分类、账户或删除')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
