@@ -1,6 +1,6 @@
 {
-  "name": "花间账 · 我的小账本",
-  "short_name": "花间账",
+  "name": "小猪存钱罐 · 我的小账本",
+  "short_name": "小猪存钱罐",
   "description": "纯本地、无广告的可爱记账应用",
   "start_url": "./index.html",
   "scope": "./",

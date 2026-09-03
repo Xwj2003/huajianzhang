@@ -276,6 +276,15 @@ h1.title{font-size:18px;font-weight:800;}
 .rank-item .vl{font-weight:800;font-size:14px;}
 .rank-item .mini-bar{height:6px;border-radius:99px;background:var(--primary-soft);flex:1;max-width:90px;overflow:hidden;}
 .rank-item .mini-bar>i{display:block;height:100%;background:var(--grad-primary);border-radius:99px;}
+.pig-card{display:flex;align-items:center;gap:16px;background:var(--surface);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-soft);margin-top:16px;}
+.pig-card canvas{width:120px;height:120px;display:block;flex:0 0 auto;}
+.pig-info{flex:1;min-width:0;}
+.pig-info .pig-label{font-size:12px;color:var(--muted);font-weight:700;}
+.pig-goal{font-size:12px;color:var(--muted);font-weight:600;margin-top:6px;}
+.pig-bar{height:8px;border-radius:999px;background:var(--primary-soft);overflow:hidden;margin-top:4px;}
+.pig-bar>i{display:block;height:100%;border-radius:999px;background:var(--grad-bar);transition:width .5s ease;}
+.pig-bar.warn>i{background:linear-gradient(90deg,#FF8FA3,#FF6B6B);}
+.pig-budget-head{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:600;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -294,9 +303,15 @@ h1.title{font-size:18px;font-weight:800;}
         </div>
       </div>
 
-      <div class="bar-wrap" id="budgetWrap" style="display:none;">
-        <div class="bar-head"><span id="budgetLabel">本月预算</span><span id="budgetText"></span></div>
-        <div class="bar" id="budgetBar"><i id="budgetFill" style="width:0%"></i></div>
+      <div class="pig-card" onclick="replayPig()">
+        <canvas id="pigCanvas" width="240" height="240"></canvas>
+        <div class="pig-info">
+          <div class="pig-label">🐷 存钱看板 · 点我摸摸它</div>
+          <div class="pig-goal" id="pigGoal">还没定目标，去「目标」页设一个吧</div>
+          <div class="pig-bar" id="pigBarWrap" style="display:none;"><i id="pigFill" style="width:0%"></i></div>
+          <div class="pig-budget-head" id="pigBudgetHead" style="display:none;"><span id="pigBudgetLabel">本月预算</span><span id="pigBudgetText"></span></div>
+          <div class="pig-bar" id="pigBudgetWrap" style="display:none;"><i id="pigBudgetFill" style="width:0%"></i></div>
+        </div>
       </div>
 
       <div class="sec-title">🌸 今天 · <span id="todayDate" class="muted"></span></div>
@@ -547,7 +562,7 @@ function switchView(v){
   document.getElementById(v).classList.add('active');
   document.querySelectorAll('.nav-item[data-view]').forEach(x=>x.classList.toggle('active', x.dataset.view===v));
   document.getElementById('views').scrollTop=0;
-  if(v==='homeView') renderHome();
+  if(v==='homeView'){ renderHome(); startPigLoop(); }
   if(v==='statsView') renderStats();
   if(v==='goalsView') renderGoals();
   if(v==='settingsView') renderSettings();
@@ -562,6 +577,7 @@ function openRecord(){
 
 /* ================= 首页 ================= */
 function renderHome(){
+  renderPigboard();
   const nick = settings.nickname && settings.nickname.trim();
   document.getElementById('greet').textContent = greetText() + (nick ? '，'+nick : '');
   const now = new Date();
@@ -576,15 +592,17 @@ function renderHome(){
 
   // 预算进度
   const th = settings.threshold;
-  const bw = document.getElementById('budgetWrap');
+  const bw = document.getElementById('pigBudgetWrap');
+  const bh = document.getElementById('pigBudgetHead');
   if(th && th>0){
     bw.style.display='block';
+    bh.style.display='flex';
     const pct = Math.min(100, Math.round(exp/th*100));
-    const fill=document.getElementById('budgetFill'); fill.style.width=pct+'%';
-    document.getElementById('budgetBar').classList.toggle('warn', pct>=80);
-    document.getElementById('budgetText').textContent = money(exp)+' / '+money(th);
-    document.getElementById('budgetLabel').textContent = '本月预算 · '+pct+'%';
-  } else bw.style.display='none';
+    const fill=document.getElementById('pigBudgetFill'); fill.style.width=pct+'%';
+    bw.classList.toggle('warn', pct>=80);
+    document.getElementById('pigBudgetText').textContent = money(exp)+' / '+money(th);
+    document.getElementById('pigBudgetLabel').textContent = '本月预算 · '+pct+'%';
+  } else { bw.style.display='none'; bh.style.display='none'; }
 
   // 今日流水
   const today = todayStr();
@@ -712,6 +730,7 @@ function saveTx(){
   }
   const d=document.getElementById('dateInput').value || todayStr();
   const acc = accounts.find(a=>a.id===recAccount);
+  const reachedBefore = goalReached();
   tx.push({
     id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     type: recType, amount, cat: recCat,
@@ -724,6 +743,12 @@ function saveTx(){
     persistDebt();
   }
   persistTx();
+  if(recType==='income'){
+    triggerPigCoin(amount);
+    if(!reachedBefore && goalReached()){ setTimeout(()=>triggerPigCelebrate(), 1200); }
+  } else {
+    triggerPigSigh(amount);
+  }
   toast(recType==='expense' ? (recCat==='lend'?'借出记好啦 🤝':'支出记好啦 🍃') : '收入记好啦 🎉');
   switchView('homeView');
 }
@@ -1219,7 +1244,9 @@ function openHelp(){
     '<h3 style="font-size:17px;font-weight:800;margin-bottom:2px;">📖 帮助文档</h3>'+
     '<div class="muted" style="margin-bottom:4px;">小猪存钱罐 · 功能全览</div>'+
     B('🏠 今天（首页）')+
-    I('每日问候、本月结余与收入支出；月度预算进度条（超 80% 变红提醒）；今日流水含备注，点一下可删除。')+
+    I('每日问候、本月结余与收入支出；今日流水含备注，点一下可删除。')+
+    B('🐷 存钱看板')+
+    I('首页会动的小猪：记收入金币入罐、记支出冒气叹气瘪一下抖一抖；点它随机跳跳/左右摇/转圈；存款达成年度目标时撒金币彩带庆祝；下方显示存款进度和本月预算进度（超 80% 变红提醒）。')+
     B('✏️ 记一笔')+
     I('选支出/收入，键盘输入金额（支持加减乘除表达式，如「3×15」），选 emoji 分类、账户，可写备注、改日期。选「借出」分类时需填欠款人，会自动记一笔欠款。')+
     B('📊 统计')+
@@ -1391,8 +1418,199 @@ function checkBudget(){
   }
 }
 
+/* ================= 🐷 小猪存钱罐动画 ================= */
+const PIG_PINK='#FF9FB2', PIG_PINK_DEEP='#F78FA5', PIG_INK='#5A3B3B', PIG_GOLD='#FFD166';
+const pig = { mode:'idle', t:0, dur:0, amount:0, running:false, last:0, parts:[], blink:0, nextBlink:3 };
+function pigCanvas(){ return document.getElementById('pigCanvas'); }
+function goalReached(){
+  const g=settings.goal;
+  if(!g || !(g.amount>0)) return false;
+  return (calcDeposit()+calcDebts()) >= g.amount;
+}
+function triggerPigCoin(amount){
+  pig.mode='coin'; pig.t=0; pig.dur=2.0; pig.amount=Math.max(1, amount||1);
+  startPigLoop();
+}
+function triggerPigSigh(amount){
+  pig.mode='sigh'; pig.t=0; pig.dur=1.5; pig.amount=Math.max(1, amount||1);
+  startPigLoop();
+}
+function triggerPigCelebrate(){
+  pig.mode='celebrate'; pig.t=0; pig.dur=3.0;
+  pig.parts=[];
+  for(let i=0;i<32;i++){
+    pig.parts.push({
+      x:0, y:0, vx:(Math.random()-0.5)*7, vy:-Math.random()*7-1.5, g:0.22,
+      s:3+Math.random()*5, c:(i%3===0)?PIG_GOLD:((i%3===1)?PIG_PINK:'#7BD3A5'), life:1
+    });
+  }
+  startPigLoop();
+}
+function triggerPigShake(){
+  pig.mode='shake'; pig.t=0; pig.dur=1.4;
+  startPigLoop();
+}
+function triggerPigSpin(){
+  pig.mode='spin'; pig.t=0; pig.dur=1.5;
+  startPigLoop();
+}
+function replayPig(){
+  if(pig.mode!=='idle') return;
+  const r=Math.random();
+  if(r<0.4) triggerPigCoin(50);
+  else if(r<0.7) triggerPigShake();
+  else triggerPigSpin();
+}
+function startPigLoop(){
+  if(pig.running) return;
+  pig.running=true; pig.last=performance.now();
+  requestAnimationFrame(pigLoop);
+}
+function pigLoop(now){
+  const cv=pigCanvas();
+  if(!cv){ pig.running=false; return; }
+  const dt=Math.min(0.05,(now-pig.last)/1000); pig.last=now;
+  pig.t+=dt; pig.blink+=dt;
+  if(pig.blink>pig.nextBlink){ pig.blink=0; pig.nextBlink=2+Math.random()*4; }
+  if(pig.mode!=='idle' && pig.t>=pig.dur){ pig.mode='idle'; pig.t=0; pig.parts=[]; }
+  if(pig.mode==='celebrate'){
+    pig.parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; p.life-=dt/2.4; });
+    pig.parts=pig.parts.filter(p=>p.life>0);
+  }
+  drawPig(cv);
+  const hv=document.getElementById('homeView');
+  const homeActive=hv && hv.classList.contains('active');
+  if(pig.mode==='idle' && !homeActive){ pig.running=false; return; }
+  requestAnimationFrame(pigLoop);
+}
+function drawPig(cv){
+  const ctx=cv.getContext('2d');
+  const s=cv.width, cx=s/2;
+  ctx.clearRect(0,0,s,s);
+  const m=pig.mode, t=pig.t;
+  const now=performance.now();
+  let squash=0, lift=0, eye='round', blush=0, coinY=null, rotate=0;
+  if(m==='idle'){
+    squash=Math.sin(now/620)*0.015;
+    eye=(pig.blink<0.1)?'blink':'round';
+  } else if(m==='coin'){
+    const big=Math.min(1, pig.amount/500);
+    if(t<0.35){ coinY=-65+(t/0.35)*65; eye='round'; }
+    else if(t<0.75){ const k=(t-0.35)/0.4; squash=-0.16*Math.sin(k*Math.PI); eye='squeeze'; }
+    else if(t<1.35){ const k=(t-0.75)/0.6; lift=-(0.3+big*0.7)*26*Math.sin(k*Math.PI); eye='happy'; blush=1; }
+    else { eye='happy'; blush=Math.max(0,1-(t-1.35)/0.65); }
+  } else if(m==='sigh'){
+    if(t<0.2){ const k=t/0.2; squash=-0.05*Math.sin(k*Math.PI); eye='sad'; }
+    else if(t<0.5){ const k=(t-0.2)/0.3; squash=0.14*Math.sin(k*Math.PI); eye='sad'; }
+    else if(t<1.05){ rotate=0.035*Math.sin(t*55); squash=0.06; eye='sad'; }
+    else { eye='sad'; }
+  } else if(m==='shake'){
+    rotate=0.22*Math.sin(t*13)*Math.exp(-t*2.2);
+    squash=0.05*Math.exp(-t*2.2);
+    eye='happy'; blush=0.6;
+  } else if(m==='spin'){
+    const k=Math.min(1, t/1.2);
+    rotate=k*Math.PI*2;
+    squash=-0.08*Math.sin(k*Math.PI);
+    eye='happy'; blush=0.5;
+  } else if(m==='celebrate'){
+    const k=Math.min(1,t/0.8); lift=-30*Math.sin(k*Math.PI); eye='happy'; blush=1;
+  }
+  const bodyY=130+lift+squash*66;
+  const bodyRy=66*(1+squash*0.7);
+  const bodyRx=74*(1-squash*0.4);
+  ctx.save();
+  if(rotate!==0){ ctx.translate(cx, bodyY); ctx.rotate(rotate); ctx.translate(-cx, -bodyY); }
+  ctx.strokeStyle=PIG_PINK_DEEP; ctx.lineWidth=4; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx+70, bodyY-8);
+  ctx.quadraticCurveTo(cx+94, bodyY-20, cx+88, bodyY-36); ctx.stroke();
+  ctx.fillStyle=PIG_PINK_DEEP;
+  [[-46,58],[-20,62],[20,62],[46,58]].forEach(p=>{
+    ctx.beginPath(); ctx.ellipse(cx+p[0], bodyY+p[1]-6, 13, 9, 0, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.fillStyle=PIG_PINK;
+  ctx.beginPath(); ctx.ellipse(cx, bodyY, bodyRx, bodyRy, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx-48, bodyY-42);
+  ctx.quadraticCurveTo(cx-64, bodyY-80, cx-32, bodyY-72);
+  ctx.quadraticCurveTo(cx-28, bodyY-54, cx-38, bodyY-44); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx+48, bodyY-42);
+  ctx.quadraticCurveTo(cx+64, bodyY-80, cx+32, bodyY-72);
+  ctx.quadraticCurveTo(cx+28, bodyY-54, cx+38, bodyY-44); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=PIG_PINK_DEEP; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx-26, bodyY-bodyRy+12); ctx.lineTo(cx+26, bodyY-bodyRy+12); ctx.stroke();
+  ctx.lineCap='round';
+  if(eye==='blink'){
+    ctx.strokeStyle=PIG_INK; ctx.lineWidth=3;
+    [[-26,0],[26,0]].forEach(p=>{ ctx.beginPath(); ctx.moveTo(cx+p[0]-4, bodyY-16); ctx.lineTo(cx+p[0]+4, bodyY-16); ctx.stroke(); });
+  } else if(eye==='happy'||eye==='squeeze'){
+    ctx.strokeStyle=PIG_INK; ctx.lineWidth=3.5;
+    [[-26,0],[26,0]].forEach(p=>{ ctx.beginPath(); ctx.arc(cx+p[0], bodyY-14, 5, Math.PI*1.15, Math.PI*1.85); ctx.stroke(); });
+  } else if(eye==='sad'){
+    ctx.strokeStyle=PIG_INK; ctx.lineWidth=3.5;
+    [[-26,0],[26,0]].forEach(p=>{ ctx.beginPath(); ctx.arc(cx+p[0], bodyY-10, 5, Math.PI*0.15, Math.PI*0.85); ctx.stroke(); });
+  } else {
+    ctx.fillStyle=PIG_INK;
+    [[-26,0],[26,0]].forEach(p=>{ ctx.beginPath(); ctx.arc(cx+p[0], bodyY-16, 4.5, 0, Math.PI*2); ctx.fill(); });
+  }
+  ctx.fillStyle=PIG_PINK_DEEP;
+  ctx.beginPath(); ctx.ellipse(cx, bodyY+10, 20, 15, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=PIG_INK;
+  ctx.beginPath(); ctx.arc(cx-7, bodyY+10, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+7, bodyY+10, 2.5, 0, Math.PI*2); ctx.fill();
+  if(blush>0){
+    ctx.fillStyle='rgba(255,110,140,'+(0.32*blush)+')';
+    [[-38,24],[38,24]].forEach(p=>{ ctx.beginPath(); ctx.ellipse(cx+p[0], bodyY+p[1], 11, 7, 0, 0, Math.PI*2); ctx.fill(); });
+  }
+  if(m==='sigh' && t>0.2){
+    const k=Math.min(1,(t-0.2)/1.0);
+    const gx=cx+24, gy=bodyY+4-k*64;
+    const a=Math.max(0,1-k*1.15)*0.65;
+    ctx.fillStyle='rgba(168,180,196,'+a+')';
+    ctx.beginPath(); ctx.arc(gx,gy,8,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gx+9,gy+3,6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gx-9,gy+3,6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gx,gy-7,5,0,Math.PI*2); ctx.fill();
+  }
+  if(coinY!==null){
+    const yy=(bodyY-bodyRy+8)+coinY;
+    const r=8+Math.min(4, pig.amount/200);
+    ctx.fillStyle=PIG_GOLD; ctx.strokeStyle='#E8A020'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(cx, yy, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#C98A00'; ctx.font='bold '+Math.round(r)+'px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('¥', cx, yy+1);
+  }
+  if(m==='celebrate'){
+    const mouth=(bodyY-bodyRy+8);
+    pig.parts.forEach(p=>{
+      const px=cx+p.x, py=mouth+p.y;
+      ctx.globalAlpha=Math.max(0,p.life);
+      if(p.c===PIG_GOLD){ ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(px,py,p.s,0,Math.PI*2); ctx.fill(); }
+      else { ctx.fillStyle=p.c; ctx.save(); ctx.translate(px,py); ctx.rotate(p.x); ctx.fillRect(-p.s,-p.s/2,p.s*2,p.s); ctx.restore(); }
+    });
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+function renderPigboard(){
+  const deposit=calcDeposit();
+  const goalEl=document.getElementById('pigGoal');
+  const barWrap=document.getElementById('pigBarWrap');
+  const g=settings.goal;
+  if(g && g.amount>0){
+    const total=deposit+calcDebts();
+    const pct=Math.max(0,Math.min(100,Math.round(total/g.amount*100)));
+    goalEl.textContent='存款进度 '+pct+'% · '+money(total)+' / '+money(g.amount);
+    barWrap.style.display='block';
+    document.getElementById('pigFill').style.width=pct+'%';
+  } else {
+    goalEl.textContent='还没定目标，去「目标」页设一个吧';
+    barWrap.style.display='none';
+  }
+}
+
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '4.5';
+const APP_VERSION = '5.0';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1403,9 +1621,12 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('💳','编辑可分清账户','多张银行卡时显示具体卡名')+
-      updLine('💰','编辑可选更新存款','按新旧金额差值调整总额')+
-      updLine('🧮','表达式小数运算','如 1.3+2.4 可正常输入')+
+      updLine('🐷','存钱看板','首页新增会动的小猪，越存越胖')+
+      updLine('🪙','投币动画','记收入金币入罐')+
+      updLine('🎉','达成目标庆祝','存满目标撒金币彩带')+
+      updLine('🎲','随机互动','点小猪随机跳跳、摇摇、转圈圈')+
+      updLine('💨','叹气反馈','记支出冒气、变瘪、抖一抖再恢复')+
+      updLine('📊','看板升级','预算进度条并入看板，存款进度一目了然')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
@@ -1415,6 +1636,7 @@ applyTheme(settings.theme||'pink');
 buildKeypad();
 resetRecord();
 renderHome();
+startPigLoop();
 checkBudget();
 maybeShowUpdate();
 const _avEl=document.getElementById('appVersion'); if(_avEl) _avEl.textContent='v'+APP_VERSION;
