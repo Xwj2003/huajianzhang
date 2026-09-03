@@ -638,7 +638,7 @@ function buildKeypad(){
   keys.forEach(k=>{
     const b=document.createElement('button');
     if(k==='⌫'){ b.textContent='⌫'; b.className='fn'; b.onclick=()=>{ recAmount=recAmount.slice(0,-1); renderAmount(); }; }
-    else if(k==='.'){ b.textContent='.'; b.className='fn'; b.onclick=()=>{ if(!recAmount.includes('.')){ recAmount = recAmount===''?'0.':recAmount+'.'; renderAmount(); } }; }
+    else if(k==='.'){ b.textContent='.'; b.className='fn'; b.onclick=()=>{ const seg=recAmount.split(/[+\-−×÷]/).pop(); if(seg.includes('.')) return; recAmount += (seg===''?'0.':'.'); renderAmount(); }; }
     else { b.textContent=k; b.onclick=()=>{ const digits=recAmount.replace(/[^0-9]/g,'').length; if(digits>=9) return; if(k==='0'&&recAmount==='0') return; if(recAmount==='0'&&k!=='0') recAmount=k; else recAmount+=k; renderAmount(); }; }
     grid.appendChild(b);
   });
@@ -819,13 +819,16 @@ function openEditTx(id){
   const L=txt=>'<div class="muted" style="font-size:12px;font-weight:700;margin:12px 0 4px;">'+txt+'</div>';
   const cats = t.type==='expense'?categories.expense:categories.income;
   const catOpts = cats.map(c=>'<option value="'+c.id+'"'+(c.id===t.cat?' selected':'')+'>'+c.em+' '+c.n+'</option>').join('');
-  const accOpts = accounts.map(a=>'<option value="'+a.id+'"'+(a.id===t.account?' selected':'')+'>'+accountLabel(a)+'</option>').join('');
+  const accOpts = accounts.map(a=>'<option value="'+a.id+'"'+(a.id===t.account?' selected':'')+'>'+accountEmoji(a)+' '+a.name+'</option>').join('');
   openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:4px;">✏️ 编辑这笔</h3>'+
     L('金额')+'<input class="inp" id="editAmt" value="'+t.amount+'" inputmode="decimal">'+
     L('备注')+'<input class="inp" id="editNote" maxlength="40" value="'+esc(t.note||'')+'">'+
     L('分类')+'<select class="inp" id="editCat">'+catOpts+'</select>'+
     L('账户')+'<select class="inp" id="editAcc">'+accOpts+'</select>'+
     L('日期')+'<input class="inp" id="editDate" type="date" value="'+t.date+'">'+
+    '<label style="display:flex;align-items:center;gap:9px;margin-top:16px;font-size:14px;font-weight:600;color:var(--ink);">'+
+      '<input type="checkbox" id="editDeposit" checked style="width:19px;height:19px;accent-color:var(--primary-deep);flex:0 0 auto;">'+
+      '<span>更新总存款（按新旧金额的差值调整）</span></label>'+
     '<div class="btn-row"><button class="btn ghost" onclick="delTx(\''+id+'\')">删除</button>'+
     '<button class="btn primary" onclick="saveEditTx()">保存</button></div>');
 }
@@ -836,6 +839,9 @@ function saveEditTx(){
   let amount=parseFloat(raw);
   if(/[+\-−×÷]/.test(raw)){ const v=calcExpr(raw); amount=(v==null)?NaN:v; }
   if(!amount||amount<=0){ toast('金额不对哦'); return; }
+  const oldAmt=t.amount;
+  const updateDeposit=document.getElementById('editDeposit').checked;
+  const before=calcDeposit();
   t.amount=amount;
   t.note=document.getElementById('editNote').value.trim();
   t.cat=document.getElementById('editCat').value;
@@ -843,6 +849,13 @@ function saveEditTx(){
   t.account=accId;
   const acc=accounts.find(a=>a.id===accId); t.accountName=acc?acc.name:'';
   t.date=document.getElementById('editDate').value||t.date;
+  const after=calcDeposit();
+  const depositDelta=(t.type==='income'?1:-1)*(amount-oldAmt);
+  const desired=updateDeposit?(before+depositDelta):before;
+  if(Math.abs(desired-after)>0.001){
+    settings.depositBase=(settings.depositBase||0)+(desired-after);
+    persistSet();
+  }
   persistTx(); closeSheet(); toast('改好啦 ✨');
   renderHome(); renderStats();
 }
@@ -1379,7 +1392,7 @@ function checkBudget(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '4.4';
+const APP_VERSION = '4.5';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1390,7 +1403,9 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('📖','帮助文档','「我的」页新增完整功能介绍')+
+      updLine('💳','编辑可分清账户','多张银行卡时显示具体卡名')+
+      updLine('💰','编辑可选更新存款','按新旧金额差值调整总额')+
+      updLine('🧮','表达式小数运算','如 1.3+2.4 可正常输入')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
