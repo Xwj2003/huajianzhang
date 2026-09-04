@@ -270,6 +270,7 @@ h1.title{font-size:18px;font-weight:800;}
 .donut-center .k{font-size:11px;color:var(--muted);}
 .rank-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
 .rank-item:last-child{border-bottom:none;}
+.rank-item .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
 .rank-item .em{font-size:20px;width:34px;text-align:center;}
 .rank-item .nm{flex:1;font-weight:600;font-size:14px;}
 .rank-item .pc{font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;}
@@ -787,12 +788,14 @@ function renderStats(){
   const se=document.getElementById('statsEmpty');
   if(arr.length===0){ document.getElementById('statsEmptyText').textContent = statsType==='expense'?'这个月还没有支出记录':'这个月还没有收入记录'; se.style.display='block'; return; }
   se.style.display='none';
+  const colors=DONUT_PALETTES[currentThemeKey()]||DONUT_PALETTES.pink;
   arr.forEach((it,i)=>{
     const c=catById(it.id);
+    const color=colors[i%colors.length];
     const pct = sum>0?Math.round(it.amt/sum*100):0;
     const el=document.createElement('div'); el.className='rank-item';
-    el.innerHTML='<span class="em">'+c.em+'</span><span class="nm">'+c.n+'</span>'+
-      '<span class="pc">'+pct+'%</span><span class="mini-bar"><i style="width:'+pct+'%"></i></span>'+
+    el.innerHTML='<span class="dot" style="background:'+color+'"></span><span class="em">'+c.em+'</span><span class="nm">'+c.n+'</span>'+
+      '<span class="pc">'+pct+'%</span><span class="mini-bar"><i style="width:'+pct+'%;background:'+color+'"></i></span>'+
       '<span class="vl" style="min-width:64px;text-align:right;">'+money(it.amt)+'</span>';
     rl.appendChild(el);
   });
@@ -1610,7 +1613,7 @@ function renderPigboard(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1621,12 +1624,7 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('🐷','存钱看板','首页新增会动的小猪，越存越胖')+
-      updLine('🪙','投币动画','记收入金币入罐')+
-      updLine('🎉','达成目标庆祝','存满目标撒金币彩带')+
-      updLine('🎲','随机互动','点小猪随机跳跳、摇摇、转圈圈')+
-      updLine('💨','叹气反馈','记支出冒气、变瘪、抖一抖再恢复')+
-      updLine('📊','看板升级','预算进度条并入看板，存款进度一目了然')+
+      updLine('🎨','统计配色','环形图与分类排行颜色一一对应')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
