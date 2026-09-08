@@ -172,6 +172,16 @@ h1.title{font-size:18px;font-weight:800;}
 .type-toggle{display:flex;background:var(--primary-soft);border-radius:999px;padding:4px;margin-bottom:16px;}
 .type-toggle button{flex:1;padding:9px;border-radius:999px;font-weight:700;color:var(--muted);font-size:15px;}
 .type-toggle button.on{background:var(--surface);color:var(--primary-deep);box-shadow:var(--shadow-soft);}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cal-week span{text-align:center;font-size:11px;color:var(--muted);font-weight:700;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{position:relative;aspect-ratio:1;border-radius:8px;background:var(--primary-soft);overflow:hidden;cursor:pointer;}
+.cal-cell.empty{background:transparent;cursor:default;}
+.cal-cell .cd{position:absolute;top:2px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:var(--muted);z-index:2;line-height:1;}
+.cal-cell .cw{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--primary),var(--primary-deep));opacity:.82;border-radius:8px;}
+.cal-cell.today .cd{color:var(--primary-deep);font-weight:800;}
+.cal-cell.today{box-shadow:inset 0 0 0 2px var(--primary-deep);}
+.cal-cell.sel{box-shadow:inset 0 0 0 2px var(--primary);}
 .amount-display{text-align:center;padding:16px 0 6px;font-size:44px;font-weight:800;letter-spacing:-.5px;}
 .amount-display .cur{font-size:22px;color:var(--primary-deep);font-weight:700;margin-right:4px;}
 .amount-display .dim{color:var(--muted);}
@@ -341,7 +351,18 @@ h1.title{font-size:18px;font-weight:800;}
       </div>
 
       <div class="card" style="margin-top:14px;">
+        <div class="sec-title" style="margin:0 0 12px;">🗓 本月花费</div>
+        <div class="cal-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div id="calDayDetail" style="display:none;margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
         <div class="sec-title" style="margin:0 0 12px;">📅 每日明细</div>
+        <div class="type-toggle detail-toggle" style="margin:0 0 12px;">
+          <button class="on" data-dm="date" onclick="setStatsDetail('date')">按日期</button>
+          <button data-dm="category" onclick="setStatsDetail('category')">按分类</button>
+        </div>
         <div id="dailyList"></div>
         <div class="empty" id="dailyEmpty" style="display:none;"><span class="e">🌷</span><span id="dailyEmptyText">这个月还没有记录</span></div>
       </div>
@@ -407,6 +428,11 @@ h1.title{font-size:18px;font-weight:800;}
           </div>
           <div class="ball-sub" id="thresholdSub">已花 ¥0 / 预算 ¥0</div>
           <div class="ring-note" id="thresholdNote"></div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+          <div class="h-row"><span class="muted" style="font-weight:700;font-size:13px;">🏷️ 单类限额</span><button class="act" onclick="openCatLimit()">＋ 添加</button></div>
+          <div id="catLimitList" style="margin-top:10px;"></div>
+          <div class="empty" id="catLimitEmpty" style="display:none;"><span class="e">🏷️</span>给某个分类单独设个限额吧</div>
         </div>
       </div>
 
@@ -504,7 +530,7 @@ let categories = load(K.cat, JSON.parse(JSON.stringify(DEFAULT_CATS)));
 if(!categories.expense.find(c=>c.id==='lend')) categories.expense.push({id:'lend', em:'🤝', n:'借出'});
 if(!categories.income.find(c=>c.id==='repay')) categories.income.push({id:'repay', em:'💵', n:'还款'});
 save(K.cat, categories);
-let settings = Object.assign({threshold:null, goal:null, nickname:'', depositBase:null, depositBaseAt:null, theme:null}, load(K.set, {}));
+let settings = Object.assign({threshold:null, goal:null, catLimits:null, nickname:'', depositBase:null, depositBaseAt:null, theme:null}, load(K.set, {}));
 if(settings.depositBase==null && settings.initialDeposit!=null){ settings.depositBase = settings.initialDeposit; settings.depositBaseAt = 0; }
 let debts = load(K.debt, []);
 
@@ -757,8 +783,11 @@ function saveTx(){
 /* ================= 统计 ================= */
 let statsMonth = monthOf(todayStr());
 let statsType = 'expense';
+let statsDetail = 'date';
+let calSelDay = null;
 function setStatsType(t){
   statsType=t;
+  calSelDay=null;
   document.querySelectorAll('#statsToggle button').forEach(b=>b.classList.toggle('on', b.dataset.type===t));
   renderStats();
 }
@@ -766,6 +795,7 @@ function shiftMonth(d){
   const [y,m]=statsMonth.split('-').map(Number);
   const dt=new Date(y, m-1+d, 1);
   statsMonth = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  calSelDay=null;
   renderStats();
 }
 function renderStats(){
@@ -783,7 +813,9 @@ function renderStats(){
   const arr = Object.entries(byCat).map(([id,amt])=>({id,amt})).sort((a,b)=>b.amt-a.amt);
 
   drawDonut(arr);
-  renderDaily(selTx);
+  renderCalendar(selTx);
+  document.querySelectorAll('#statsView .detail-toggle button').forEach(b=>b.classList.toggle('on', b.dataset.dm===statsDetail));
+  if(statsDetail==='category') renderCategory(selTx); else renderDaily(selTx);
   const rl=document.getElementById('rankList'); rl.innerHTML='';
   const se=document.getElementById('statsEmpty');
   if(arr.length===0){ document.getElementById('statsEmptyText').textContent = statsType==='expense'?'这个月还没有支出记录':'这个月还没有收入记录'; se.style.display='block'; return; }
@@ -830,6 +862,87 @@ function renderDaily(selTx){
     html+='</div></div>';
     list.insertAdjacentHTML('beforeend', html);
   });
+}
+function setStatsDetail(mode){
+  statsDetail=mode;
+  renderStats();
+}
+function renderCategory(selTx){
+  const list=document.getElementById('dailyList');
+  const empty=document.getElementById('dailyEmpty');
+  list.innerHTML='';
+  if(selTx.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  const byCat={};
+  selTx.forEach(t=>{ (byCat[t.cat]=byCat[t.cat]||[]).push(t); });
+  const groups=Object.entries(byCat).map(([cat,arr])=>({
+    cat, arr:arr.sort((a,b)=>b.amount-a.amount), sum:arr.reduce((s,t)=>s+t.amount,0)
+  })).sort((a,b)=>b.sum-a.sum);
+  groups.forEach((g,gi)=>{
+    const c=catById(g.cat);
+    const gid='cg'+gi;
+    let html='<div class="day-group"><div class="day-head" onclick="toggleDay(\''+gid+'\')">'+
+      '<span>'+c.em+' '+c.n+'<small class="muted"> · '+g.arr.length+'笔</small></span>'+
+      '<span class="day-sum">'+money(g.sum)+'<span class="caret" id="'+gid+'c">▾</span></span></div>'+
+      '<div class="day-body" id="'+gid+'" style="display:none;">';
+    g.arr.forEach(t=>{
+      const [mm,dd]=t.date.slice(5).split('-');
+      html+='<div class="day-item" onclick="openEditTx(\''+t.id+'\')"><span class="em">'+c.em+'</span>'+
+        '<span class="nm">'+Number(mm)+'月'+Number(dd)+'日</span>'+
+        '<span class="nt">'+esc(t.note||t.accountName||'')+'</span>'+
+        '<span class="amt '+t.type+'">'+(t.type==='expense'?'-':'+')+money(t.amount)+'</span></div>';
+    });
+    html+='</div></div>';
+    list.insertAdjacentHTML('beforeend', html);
+  });
+}
+function renderCalendar(selTx){
+  const grid=document.getElementById('calGrid');
+  if(!grid) return;
+  const [y,m]=statsMonth.split('-').map(Number);
+  const daysInMonth=new Date(y,m,0).getDate();
+  const firstDow=(new Date(y,m-1,1).getDay()+6)%7;
+  const byDay={};
+  selTx.forEach(t=>{ byDay[t.date]=(byDay[t.date]||0)+t.amount; });
+  const maxAmt=Math.max(0,...Object.values(byDay));
+  const today=todayStr();
+  let html='';
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const amt=byDay[ds]||0;
+    const level=maxAmt>0?Math.round(amt/maxAmt*100):0;
+    const isToday=ds===today;
+    const isSel=ds===calSelDay;
+    html+='<div class="cal-cell'+(isToday?' today':'')+(isSel?' sel':'')+'" onclick="selectDay(\''+ds+'\')">'+
+      '<div class="cd">'+d+'</div>'+
+      (amt>0?'<div class="cw" style="height:'+level+'%"></div>':'')+
+      '</div>';
+  }
+  grid.innerHTML=html;
+  renderCalDayDetail(selTx);
+}
+function selectDay(ds){
+  calSelDay = (calSelDay===ds) ? null : ds;
+  renderStats();
+}
+function renderCalDayDetail(selTx){
+  const el=document.getElementById('calDayDetail');
+  if(!el) return;
+  if(!calSelDay){ el.style.display='none'; el.innerHTML=''; return; }
+  const dayTx=selTx.filter(t=>t.date===calSelDay);
+  if(dayTx.length===0){ el.style.display='none'; return; }
+  el.style.display='block';
+  const [mm,dd]=calSelDay.slice(5).split('-');
+  const sum=dayTx.reduce((s,t)=>s+t.amount,0);
+  let html='<div style="font-weight:700;font-size:13px;margin-bottom:6px;">'+Number(mm)+'月'+Number(dd)+'日 · '+(statsType==='expense'?'支出':'收入')+' '+money(sum)+' · '+dayTx.length+'笔</div>';
+  dayTx.forEach(t=>{
+    const c=catById(t.cat);
+    html+='<div class="day-item" onclick="openEditTx(\''+t.id+'\')"><span class="em">'+c.em+'</span><span class="nm">'+c.n+'</span>'+
+      '<span class="nt">'+esc(t.note||'')+'</span>'+
+      '<span class="amt '+t.type+'">'+(t.type==='expense'?'-':'+')+money(t.amount)+'</span></div>';
+  });
+  el.innerHTML=html;
 }
 function toggleDay(gid){
   const b=document.getElementById(gid);
@@ -974,6 +1087,7 @@ function renderGoals(){
   document.getElementById('totalDeposit').textContent = money(total);
   document.getElementById('depositDetail').textContent = '现金 '+money(cash)+' · 别人欠我 '+money(owed);
   renderDebts();
+  renderCatLimits();
 
   // 月度阈值
   const th=settings.threshold;
@@ -1168,6 +1282,52 @@ function saveDeposit(){
   settings.depositBase=v; settings.depositBaseAt=Date.now(); persistSet();
   closeSheet(); toast('总存款已更新 ✨'); renderGoals();
 }
+function openCatLimit(){
+  const cats=categories.expense;
+  const opts=cats.map(c=>'<option value="'+c.id+'">'+c.em+' '+c.n+'</option>').join('');
+  openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">🏷️ 单类限额</h3>'+
+    '<div class="muted" style="font-size:12px;font-weight:700;margin-bottom:4px;">选一个分类</div>'+
+    '<select class="inp" id="clCat">'+opts+'</select>'+
+    '<div class="muted" style="font-size:12px;font-weight:700;margin:12px 0 4px;">本月最多花多少</div>'+
+    '<input class="inp" id="clAmt" type="number" inputmode="decimal" placeholder="例如 500">'+
+    '<div style="margin-top:16px;" class="btn-row"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" onclick="saveCatLimit()">保存</button></div>');
+  setTimeout(()=>document.getElementById('clAmt').focus(),200);
+}
+function saveCatLimit(){
+  const cat=document.getElementById('clCat').value;
+  const v=parseFloat(document.getElementById('clAmt').value);
+  if(!v||v<=0){ toast('请输入有效金额'); return; }
+  if(!settings.catLimits) settings.catLimits={};
+  settings.catLimits[cat]=v;
+  persistSet(); closeSheet(); toast('单类限额设置好啦 ✨'); renderGoals();
+}
+function delCatLimit(cat){
+  if(settings.catLimits) delete settings.catLimits[cat];
+  persistSet(); toast('已删除'); renderGoals();
+}
+function renderCatLimits(){
+  const list=document.getElementById('catLimitList');
+  const empty=document.getElementById('catLimitEmpty');
+  if(!list) return;
+  const limits=settings.catLimits||{};
+  const m=monthOf(todayStr());
+  const expByCat={};
+  tx.filter(t=>t.type==='expense'&&monthOf(t.date)===m).forEach(t=>{ expByCat[t.cat]=(expByCat[t.cat]||0)+t.amount; });
+  const entries=Object.entries(limits);
+  if(entries.length===0){ empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display='none';
+  let html='';
+  entries.forEach(([cat,amt])=>{
+    const c=catById(cat);
+    const spent=expByCat[cat]||0;
+    const over=spent>amt;
+    html+='<div class="set-item"'+(over?' style="background:var(--danger-soft);border-radius:12px;"':'')+'>'+
+      '<div class="em">'+c.em+'</div>'+
+      '<div class="t">'+c.n+'<div class="s"'+(over?' style="color:#FF6B6B;"':'')+'>已花 '+money(spent)+' / 限额 '+money(amt)+(over?' · 已超支':'')+'</div></div>'+
+      '<button class="act" onclick="delCatLimit(\''+cat+'\')">删除</button></div>';
+  });
+  list.innerHTML=html;
+}
 function openThreshold(){
   const cur = settings.threshold||'';
   openSheet('<div class="grab"></div><h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">🍬 每月最多花多少</h3>'+
@@ -1253,9 +1413,9 @@ function openHelp(){
     B('✏️ 记一笔')+
     I('选支出/收入，键盘输入金额（支持加减乘除表达式，如「3×15」），选 emoji 分类、账户，可写备注、改日期。选「借出」分类时需填欠款人，会自动记一笔欠款。')+
     B('📊 统计')+
-    I('按月切换、支出/收入切换；分类占比甜甜圈图（随主题变色）、分类排行；「每日明细」按天分组，点某天展开/收起，点某一笔可编辑或删除。')+
+    I('按月切换、支出/收入切换；分类占比甜甜圈图（随主题变色）、分类排行；「本月花费」消费日历，每天一格、水越多表示当天花得越多，点某天看当天明细；「每日明细」支持按日期 / 按分类两种看，按分类会从高到低列出每一笔，点某一笔可编辑或删除。')+
     B('🎯 目标')+
-    I('当前总存款（可校准，支持按账户分别输入或直接输总额）；月度消费阈值；年度存款目标（自定义起止日期）；「别人欠我」管理借出与还款。')+
+    I('当前总存款（可校准，支持按账户分别输入或直接输总额）；月度消费阈值；单类限额（给某个分类单独设本月上限）；年度存款目标（自定义起止日期）；「别人欠我」管理借出与还款。')+
     B('⚙️ 我的')+
     I('昵称；账户管理（支付宝/微信固定，银行卡/基金可加多个）；分类管理；主题颜色（7 种配色）；数据导出/导入/清空。')+
     B('🔔 预算提醒')+
@@ -1613,7 +1773,7 @@ function renderPigboard(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1624,7 +1784,9 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('🎨','统计配色','环形图与分类排行颜色一一对应')+
+      updLine('🗓','消费日历','每天一格，水越多表示当天花得越多')+
+      updLine('🏷️','分类明细','按分类看每笔开销，从高到低')+
+      updLine('🍬','单类限额','给某个分类单独设本月限额')+
     '</div>'+
     '<button class="btn primary" onclick="closeSheet()">太棒了 🎉</button>');
 }
