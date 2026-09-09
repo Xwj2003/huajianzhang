@@ -172,16 +172,14 @@ h1.title{font-size:18px;font-weight:800;}
 .type-toggle{display:flex;background:var(--primary-soft);border-radius:999px;padding:4px;margin-bottom:16px;}
 .type-toggle button{flex:1;padding:9px;border-radius:999px;font-weight:700;color:var(--muted);font-size:15px;}
 .type-toggle button.on{background:var(--surface);color:var(--primary-deep);box-shadow:var(--shadow-soft);}
-.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
-.cal-week span{text-align:center;font-size:11px;color:var(--muted);font-weight:700;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.cal-cell{position:relative;height:0;padding-bottom:100%;border-radius:8px;background:var(--primary-soft);overflow:hidden;cursor:pointer;}
-.cal-cell.empty{background:transparent;cursor:default;}
-.cal-cell .cd{position:absolute;top:2px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:var(--muted);z-index:2;line-height:1;}
-.cal-cell .cw{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--primary),var(--primary-deep));opacity:.82;border-radius:8px;}
-.cal-cell.today .cd{color:var(--primary-deep);font-weight:800;}
-.cal-cell.today{box-shadow:inset 0 0 0 2px var(--primary-deep);}
-.cal-cell.sel{box-shadow:inset 0 0 0 2px var(--primary);}
+.bar-chart{display:flex;align-items:flex-end;gap:2px;height:140px;}
+.bar-wrap{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:pointer;border-radius:5px;}
+.bar-wrap.sel{background:var(--primary-soft);}
+.bar{width:55%;max-width:9px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--primary),var(--primary-deep));pointer-events:none;}
+.bar.empty{background:transparent;}
+.bar.today{background:var(--primary-deep);}
+.bar-label{font-size:8px;color:var(--muted);margin-top:4px;line-height:1;height:12px;pointer-events:none;}
+.bar-label.today{color:var(--primary-deep);font-weight:800;}
 .amount-display{text-align:center;padding:16px 0 6px;font-size:44px;font-weight:800;letter-spacing:-.5px;}
 .amount-display .cur{font-size:22px;color:var(--primary-deep);font-weight:700;margin-right:4px;}
 .amount-display .dim{color:var(--muted);}
@@ -351,10 +349,9 @@ h1.title{font-size:18px;font-weight:800;}
       </div>
 
       <div class="card" style="margin-top:14px;">
-        <div class="sec-title" style="margin:0 0 12px;">🗓 本月花费</div>
-        <div class="cal-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div id="calDayDetail" style="display:none;margin-top:12px;"></div>
+        <div class="sec-title" style="margin:0 0 12px;">📊 本月花费</div>
+        <div class="bar-chart" id="barChart"></div>
+        <div id="barDayDetail" style="display:none;margin-top:12px;"></div>
       </div>
 
       <div class="card" style="margin-top:14px;">
@@ -813,7 +810,7 @@ function renderStats(){
   const arr = Object.entries(byCat).map(([id,amt])=>({id,amt})).sort((a,b)=>b.amt-a.amt);
 
   drawDonut(arr);
-  renderCalendar(selTx);
+  renderBarChart(selTx);
   document.querySelectorAll('#statsView .detail-toggle button').forEach(b=>b.classList.toggle('on', b.dataset.dm===statsDetail));
   if(statsDetail==='category') renderCategory(selTx); else renderDaily(selTx);
   const rl=document.getElementById('rankList'); rl.innerHTML='';
@@ -896,38 +893,37 @@ function renderCategory(selTx){
     list.insertAdjacentHTML('beforeend', html);
   });
 }
-function renderCalendar(selTx){
-  const grid=document.getElementById('calGrid');
-  if(!grid) return;
+function renderBarChart(selTx){
+  const chart=document.getElementById('barChart');
+  if(!chart) return;
   const [y,m]=statsMonth.split('-').map(Number);
   const daysInMonth=new Date(y,m,0).getDate();
-  const firstDow=(new Date(y,m-1,1).getDay()+6)%7;
   const byDay={};
   selTx.forEach(t=>{ byDay[t.date]=(byDay[t.date]||0)+t.amount; });
   const maxAmt=Math.max(0,...Object.values(byDay));
   const today=todayStr();
+  const BAR_MAX=120;
   let html='';
-  for(let i=0;i<firstDow;i++) html+='<div class="cal-cell empty"></div>';
   for(let d=1;d<=daysInMonth;d++){
     const ds=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const amt=byDay[ds]||0;
-    const level=maxAmt>0?Math.round(amt/maxAmt*100):0;
+    const h=maxAmt>0?Math.max(3,Math.round(amt/maxAmt*BAR_MAX)):0;
     const isToday=ds===today;
     const isSel=ds===calSelDay;
-    html+='<div class="cal-cell'+(isToday?' today':'')+(isSel?' sel':'')+'" onclick="selectDay(\''+ds+'\')">'+
-      '<div class="cd">'+d+'</div>'+
-      (amt>0?'<div class="cw" style="height:'+level+'%"></div>':'')+
-      '</div>';
+    html+='<div class="bar-wrap'+(isSel?' sel':'')+'" onclick="selectDay(\''+ds+'\')">'+
+      '<div class="bar'+(amt>0?'':' empty')+(isToday?' today':'')+'" style="height:'+h+'px"></div>'+
+      '<div class="bar-label'+(isToday?' today':'')+'">'+d+'</div>'+
+    '</div>';
   }
-  grid.innerHTML=html;
-  renderCalDayDetail(selTx);
+  chart.innerHTML=html;
+  renderBarDayDetail(selTx);
 }
 function selectDay(ds){
   calSelDay = (calSelDay===ds) ? null : ds;
   renderStats();
 }
-function renderCalDayDetail(selTx){
-  const el=document.getElementById('calDayDetail');
+function renderBarDayDetail(selTx){
+  const el=document.getElementById('barDayDetail');
   if(!el) return;
   if(!calSelDay){ el.style.display='none'; el.innerHTML=''; return; }
   const dayTx=selTx.filter(t=>t.date===calSelDay);
@@ -1413,7 +1409,7 @@ function openHelp(){
     B('✏️ 记一笔')+
     I('选支出/收入，键盘输入金额（支持加减乘除表达式，如「3×15」），选 emoji 分类、账户，可写备注、改日期。选「借出」分类时需填欠款人，会自动记一笔欠款。')+
     B('📊 统计')+
-    I('按月切换、支出/收入切换；分类占比甜甜圈图（随主题变色）、分类排行；「本月花费」消费日历，每天一格、水越多表示当天花得越多，点某天看当天明细；「每日明细」支持按日期 / 按分类两种看，按分类会从高到低列出每一笔，点某一笔可编辑或删除。')+
+    I('按月切换、支出/收入切换；分类占比甜甜圈图（随主题变色）、分类排行；「本月花费」柱状图，每天一根柱子、越高表示当天花得越多，点某天看当天明细；「每日明细」支持按日期 / 按分类两种看，按分类会从高到低列出每一笔，点某一笔可编辑或删除。')+
     B('🎯 目标')+
     I('当前总存款（可校准，支持按账户分别输入或直接输总额）；月度消费阈值；单类限额（给某个分类单独设本月上限）；年度存款目标（自定义起止日期）；「别人欠我」管理借出与还款。')+
     B('⚙️ 我的')+
@@ -1773,7 +1769,7 @@ function renderPigboard(){
 }
 
 /* ================= 版本 & 更新说明 ================= */
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.3';
 const SEEN_KEY = 'hj_seen_ver';
 function updLine(em,t,s){
   return '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="font-size:20px;width:28px;text-align:center;">'+em+'</div><div style="flex:1;"><div style="font-weight:700;font-size:14px;">'+t+'</div><div class="muted">'+s+'</div></div></div>';
@@ -1784,7 +1780,7 @@ function maybeShowUpdate(){
   openSheet('<div class="grab"></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px;">🐷 小猪存钱罐 v'+APP_VERSION+' 更新啦</h3>'+
     '<div class="muted" style="margin-bottom:14px;">这次加了不少新东西：</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">'+
-      updLine('🗓','消费日历','每天一格，水越多表示当天花得越多')+
+      updLine('📊','月度柱状图','每天一根柱子，越高表示当天花得越多')+
       updLine('🏷️','分类明细','按分类看每笔开销，从高到低')+
       updLine('🍬','单类限额','给某个分类单独设本月限额')+
     '</div>'+
