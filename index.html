@@ -911,7 +911,7 @@ function renderBarChart(selTx){
     const isToday=ds===today;
     const isSel=ds===calSelDay;
     html+='<div class="bar-wrap'+(isSel?' sel':'')+'" onclick="selectDay(\''+ds+'\')">'+
-      '<div class="bar'+(amt>0?'':' empty')+(isToday?' today':'')+'" style="height:'+h+'px"></div>'+
+      '<div class="bar'+(amt>0?'':' empty')+(isToday&&amt>0?' today':'')+'" style="height:'+h+'px"></div>'+
       '<div class="bar-label'+(isToday?' today':'')+'">'+d+'</div>'+
     '</div>';
   }
